@@ -1,0 +1,350 @@
+[
+  {
+    "timestamp": "2026-02-26T02:56:45.626616",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Today I woke up feeling very tired even though I slept around 6 hours. I had a mild headache in the morning and felt a bit dizzy before lunch. I drank coffee and skipped breakfast. I\u2019ve been feeling stressed about exams and noticed my sleep hasn\u2019t been consistent this week. The headache improved in the evening but I still feel low energy.",
+    "medical_entities": {
+      "symptoms": [
+        "headache",
+        "mild headache",
+        "tired"
+      ],
+      "conditions": [
+        "I",
+        "dizzy",
+        "energy",
+        "evening",
+        "exams",
+        "hours",
+        "improved",
+        "low",
+        "lunch",
+        "morning",
+        "skipped breakfast",
+        "sleep",
+        "stressed",
+        "week",
+        "woke"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": -0.177,
+      "tags": [
+        "symptoms",
+        "mood",
+        "food"
+      ],
+      "suggestions": [],
+      "summary": "Today I woke up feeling very tired even though I s..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T14:49:05.083158",
+    "date": "2026-02-26",
+    "mode": "soap",
+    "raw_text_redacted": "Hello I am feeling good that i can successfully run my code bro",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Hello I"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "soap": {
+      "text": "It seems like there might be a misunderstanding. The information provided does not pertain to a medical SOAP note. If you have medical information or a patient encounter to document, please provide the relevant details, and I will format it into a SOAP note for you.",
+      "quality": {
+        "score": 50,
+        "checks": [
+          [
+            "Missing standard S/O/A/P headers",
+            false
+          ],
+          [
+            "Missing Vitals",
+            false
+          ],
+          [
+            "Missing symptom duration",
+            false
+          ],
+          [
+            "No clear follow-up stated",
+            false
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:01:36.153510",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Bonjour, comment allez-vous? \u00c7a va bien?",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "allez-vous",
+        "comment",
+        "va bien"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Bonjour, comment allez-vous? \u00c7a va bien?..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:17:38.615966",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "hey please help me with life longer i wanna live like until 100 years old is that possible or just like 80 years old i don't know",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "life",
+        "please",
+        "wanna"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.8402,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "hey please help me with life longer i wanna live l..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:18:32.278874",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Ya, saya tidak tahu. Saya sedang berfikir sekarang. Mungkin saya mahu mempunyai kehidupan yang baik, kesihatan yang baik, dengan makanan, dengan perkara fizikal dan dengan wang yang kaya.",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Mungkin",
+        "Saya",
+        "Ya",
+        "baik",
+        "berfikir",
+        "dengan",
+        "kaya",
+        "kehidupan yang",
+        "kesihatan yang",
+        "makanan",
+        "mempunyai",
+        "perkara fizikal",
+        "saya",
+        "sekarang",
+        "tidak tahu",
+        "wang yang"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Ya, saya tidak tahu. Saya sedang berfikir sekarang..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:23:14.430942",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "\uc2dc\uccad \ud574\uc8fc\uc154\uc11c \uac10\uc0ac\ud569\ub2c8\ub2e4.",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "\uac10\uc0ac\ud569\ub2c8\ub2e4",
+        "\ud574\uc8fc\uc154\uc11c"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "\uc2dc\uccad \ud574\uc8fc\uc154\uc11c \uac10\uc0ac\ud569\ub2c8\ub2e4...."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:23:26.820545",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Hi, how are you?",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Hi"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Hi, how are you?..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:27:01.252278",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Stort p\u00e5 regulation... ...med et fj\u00e4rde system, i samme storeymsset... ...er deKEN i samme system.",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Stort",
+        "deKEN",
+        "fj\u00e4rde system",
+        "regulation",
+        "samme",
+        "samme system"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Stort p\u00e5 regulation... ...med et fj\u00e4rde system, i ..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:27:55.960320",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "I have a headache and you know I'm not feeling very good I just had pizza for lunch and it's giving me a stomach ache",
+    "medical_entities": {
+      "symptoms": [
+        "headache",
+        "stomach ache"
+      ],
+      "conditions": [
+        "I",
+        "lunch",
+        "pizza",
+        "you know I'm"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": -0.4927,
+      "tags": [
+        "food",
+        "symptoms",
+        "Chat Insight"
+      ],
+      "suggestions": [
+        "- Consider rest, hydration, talking to someone you trust, or a clinician if concerned."
+      ],
+      "summary": "I have a headache and you know I'm not feeling ver..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:28:38.702708",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "\u092e\u0941\u091d\u0915\u094b \u0939\u0947\u0921\u0947\u0915 \u0906\u092f\u093e \u0939\u0948 \u0914\u0930 \u092e\u0947\u0930\u093e \u092a\u0947\u091f \u0916\u0930\u093e\u092c \u0939\u0948",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "\u092e\u0947\u0930\u093e \u092a\u0947\u091f",
+        "\u0939\u0947\u0921\u0947\u0915 \u0906\u092f\u093e \u0939\u0948 \u0914\u0930"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "\u092e\u0941\u091d\u0915\u094b \u0939\u0947\u0921\u0947\u0915 \u0906\u092f\u093e \u0939\u0948 \u0914\u0930 \u092e\u0947\u0930\u093e \u092a\u0947\u091f \u0916\u0930\u093e\u092c \u0939\u0948..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T16:47:17.782416",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Hey, how are you?",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Hey"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Hey, how are you?..."
+    }
+  },
+  {
+    "timestamp": "2026-02-26T17:28:44.616686",
+    "date": "2026-02-26",
+    "mode": "diary",
+    "raw_text_redacted": "Hey How are you",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "Hey"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "Chat Insight"
+      ],
+      "suggestions": [],
+      "summary": "Hey How are you..."
+    }
+  }
+]

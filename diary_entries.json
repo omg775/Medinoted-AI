@@ -1,0 +1,20 @@
+[
+  {
+    "date": "2026-02-24",
+    "text": "I felt tired",
+    "sentiment": -0.4404,
+    "tags": [
+      "symptoms"
+    ]
+  },
+  {
+    "date": "2026-02-24",
+    "text": "Today I felt tired most of the day and had a mild headache in the afternoon. I slept only about 5 hours last night. I ate toast and coffee for breakfast and pasta for dinner. I felt a bit stressed because of school work but felt better in the evening after resting.",
+    "sentiment": 0.296,
+    "tags": [
+      "food",
+      "symptoms",
+      "mood"
+    ]
+  }
+]

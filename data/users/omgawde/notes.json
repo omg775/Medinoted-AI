@@ -1,0 +1,74 @@
+[
+  {
+    "timestamp": "2026-02-27T20:08:17.846327",
+    "date": "2026-02-27",
+    "mode": "soap",
+    "raw_text_redacted": "patient Complains of about chest pain for three days. Blood pressure 130 / 80. Prescribe aspirin",
+    "medical_entities": {
+      "symptoms": [
+        "chest pain",
+        "pain"
+      ],
+      "conditions": [
+        "Blood pressure 130",
+        "Complains",
+        "days",
+        "patient"
+      ],
+      "medications": [
+        "Prescribe aspirin"
+      ],
+      "vitals": [],
+      "procedures": []
+    },
+    "soap": {
+      "text": "Subjective:\n- Patient complains of chest pain for the past three days.\n\nObjective:\n- Blood pressure: 130/80 mmHg.\n\nAssessment:\n- Chest pain, likely non-cardiac in nature but requires further evaluation.\n\nPlan:\n- Prescribe aspirin. Consider further diagnostic testing if symptoms persist or worsen. Monitor closely for any additional symptoms.",
+      "quality": {
+        "score": 90,
+        "checks": [
+          [
+            "Formatting S/O/A/P present",
+            true
+          ],
+          [
+            "Vitals mentioned",
+            true
+          ],
+          [
+            "Symptom duration noted",
+            true
+          ],
+          [
+            "No clear follow-up stated",
+            false
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-27T20:08:37.275997",
+    "date": "2026-02-27",
+    "mode": "diary",
+    "raw_text_redacted": "I have a headache",
+    "medical_entities": {
+      "symptoms": [
+        "headache"
+      ],
+      "conditions": [
+        "I"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.0,
+      "tags": [
+        "symptoms"
+      ],
+      "suggestions": [],
+      "summary": "I have a headache..."
+    }
+  }
+]

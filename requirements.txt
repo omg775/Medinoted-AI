@@ -1,0 +1,9 @@
+streamlit
+matplotlib
+vaderSentiment
+scipy
+openai
+audio-recorder-streamlit
+streamlit-mic-recorder
+numpy
+spacy
