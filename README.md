@@ -53,3 +53,6 @@ A professional, dual-feature web application that functions as both a Clinical N
    - On the left sidebar, enter your **OpenAI API Key** (if using the SOAP functionality).
    - Use the **tabs** at the top of the interface to switch between the Clinical Note Cleaner and the AI Health Diary.
    - For the Diary, enter a new entry and click "Save Entry". The app will store your data locally in `diary_entries.json` and immediately update your dashboard.
+
+OUR deployment:
+www.medinoted.com
