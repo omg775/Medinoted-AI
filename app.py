@@ -380,26 +380,6 @@ st.markdown("""
 st.markdown(load_avatar_css(), unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# State Initialization
-# -----------------------------------------------------------------------------
-if "transcribed_text" not in st.session_state:
-    st.session_state["transcribed_text"] = ""
-if "notes_db" not in st.session_state:
-    st.session_state["notes_db"] = load_notes()
-if "app_status" not in st.session_state:
-    st.session_state["app_status"] = ("ready", "Ready")
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
-if "avatar_talking" not in st.session_state:
-    st.session_state["avatar_talking"] = False
-if "last_processed_audio" not in st.session_state:
-    st.session_state["last_processed_audio"] = None
-if "distress_alert" not in st.session_state:
-    st.session_state["distress_alert"] = False
-if "active_tab_trigger" not in st.session_state:
-    st.session_state["active_tab_trigger"] = None
-
-# -----------------------------------------------------------------------------
 # Core Storage Functions (Local JSON Profile)
 # -----------------------------------------------------------------------------
 PROFILE_PATH = os.path.join("data", "user_profile.json")
@@ -482,6 +462,26 @@ def clear_local_history():
             pass
     # Reset default file
     save_user_profile({"streak_count": 0, "last_log_date": None, "logs": [], "privacy_mode": True})
+
+# -----------------------------------------------------------------------------
+# State Initialization
+# -----------------------------------------------------------------------------
+if "transcribed_text" not in st.session_state:
+    st.session_state["transcribed_text"] = ""
+if "notes_db" not in st.session_state:
+    st.session_state["notes_db"] = load_notes()
+if "app_status" not in st.session_state:
+    st.session_state["app_status"] = ("ready", "Ready")
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+if "avatar_talking" not in st.session_state:
+    st.session_state["avatar_talking"] = False
+if "last_processed_audio" not in st.session_state:
+    st.session_state["last_processed_audio"] = None
+if "distress_alert" not in st.session_state:
+    st.session_state["distress_alert"] = False
+if "active_tab_trigger" not in st.session_state:
+    st.session_state["active_tab_trigger"] = None
 
 # Privacy / Redaction Functions
 # -----------------------------------------------------------------------------
