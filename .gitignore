@@ -29,3 +29,6 @@ __pycache__/
 *.wav
 *.webm
 *.ogg
+
+# Local data directory (do not commit)
+data/
