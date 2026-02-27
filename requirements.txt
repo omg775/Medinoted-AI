@@ -7,3 +7,8 @@ audio-recorder-streamlit
 streamlit-mic-recorder
 numpy
 spacy
+bcrypt
+azure-cognitiveservices-speech
+PyPDF2
+pydub
+python-dotenv

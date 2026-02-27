@@ -361,8 +361,16 @@ if "username" not in st.session_state:
     st.session_state["username"] = None
 if "auth_mode" not in st.session_state:
     st.session_state["auth_mode"] = "login"
-
-
+if "active_flow" not in st.session_state:
+    st.session_state["active_flow"] = None
+if "next_unlock_days" not in st.session_state:
+    st.session_state["next_unlock_days"] = 3
+if "habits" not in st.session_state:
+    st.session_state["habits"] = []
+if "health_twin_summary" not in st.session_state:
+    st.session_state["health_twin_summary"] = "No profile generated yet."
+if "input_language" not in st.session_state:
+    st.session_state["input_language"] = "en-US"
 
 # -----------------------------------------------------------------------------
 # Auth & File Storage Functions
@@ -480,7 +488,8 @@ def transcribe_audio_bytes(audio_bytes):
                 tmp_path = tmp.name
             
         speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
-        speech_config.speech_recognition_language="en-US"
+        input_lang = st.session_state.get("input_language", "en-US")
+        speech_config.speech_recognition_language = input_lang
         audio_config = speechsdk.AudioConfig(filename=tmp_path)
         
         speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
@@ -631,9 +640,16 @@ def generate_risk_alerts(trends):
     alerts = []
     if trends.get("sentiment_slope", 0) < -0.1:
         alerts.append("Mood Alert: Your sentiment has been trending downwards recently. Consider practicing self-care or speaking with someone you trust.")
+        
+    escalated = False
     for sym, count in trends.get("top_symptoms", []):
         if count >= 3:
             alerts.append(f"Persistence Alert: You reported '{sym}' {count} times recently. Consider consulting a clinician if it persists.")
+            escalated = True
+            
+    if escalated:
+        alerts.append("🚨 **SMART ESCALATION**: Persistent symptoms detected. Please use the Care Circle feature to generate a report and consult a healthcare professional.")
+        
     return alerts
 
 # -----------------------------------------------------------------------------
@@ -824,6 +840,87 @@ def generate_tts_audio(text):
         st.error(f"TTS Error: {e}")
         return None
 
+def update_streak(notes):
+    """Calculates login/entry streak and unlock progress from notes."""
+    if not notes:
+        return 0, 1, 3
+    
+    dates = []
+    for n in notes:
+        try:
+            dates.append(datetime.strptime(n.get("date", "1970-01-01"), "%Y-%m-%d").date())
+        except:
+            pass
+            
+    dates = sorted(list(set(dates)), reverse=True)
+    
+    streak = 0
+    today = datetime.today().date()
+    yesterday = today - timedelta(days=1)
+    
+    if dates and (dates[0] == today or dates[0] == yesterday):
+        streak = 1
+        current_date = dates[0]
+        for d in dates[1:]:
+            if (current_date - d).days == 1:
+                streak += 1
+                current_date = d
+            elif (current_date - d).days > 1:
+                break
+                
+    total_logs = len(notes)
+    level = (total_logs // 5) + 1
+    next_unlock = 5 - (total_logs % 5)
+    
+    return streak, level, next_unlock
+
+def generate_insight(entry_text):
+    messages = [{"role": "system", "content": "You are a wellness AI. Give ONE short (15-word max), positive, non-medical insight about this journal entry. DO NOT diagnose. Sound empathetic."}]
+    messages.append({"role": "user", "content": entry_text})
+    return generate_ai_response(messages, temp=0.5)
+
+def generate_weekly_summary(notes):
+    context = build_assistant_context(notes, use_soap=False, use_diary=True)
+    system_prompt = f"Summarize the user's past 7 days based on the following logs. Keep it supportive, concise (under 50 words), and non-medical. NEVER diagnose. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.3)
+
+def generate_health_twin_summary(notes):
+    context = build_assistant_context(notes, use_soap=True, use_diary=True)
+    system_prompt = f"Analyze these logs and create a dynamic 'AI Health Twin Profile'. Summarize behavioral patterns, mood trends, and chronicity of symptoms. Keep it under 100 words, formatting with bullet points. NEVER diagnose. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.4)
+
+def generate_micro_habits(notes):
+    context = build_assistant_context(notes, use_soap=False, use_diary=True)
+    system_prompt = f"Based on the user's logs, suggest exactly 2 small, actionable 'Micro-Habits' they can do today to improve their specific documented challenges (e.g., if stressed, suggest 2 mins of breathing). Be very brief. \n\nLogs:\n{context}"
+    response = generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.4)
+    # Split by newlines or bullets to lists
+    habits = [h.strip("- *").strip() for h in response.split("\n") if h.strip() and len(h) > 5]
+    return habits[:2]
+
+def generate_question_prep(notes):
+    context = build_assistant_context(notes, use_soap=True, use_diary=True)
+    system_prompt = f"Draft 3 specific questions the patient should ask their doctor during their next visit, based on their unresolved or persistent symptoms in these logs. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.3)
+
+def generate_care_circle_report(notes):
+    context = build_assistant_context(notes, use_soap=True, use_diary=True)
+    system_prompt = f"Create a professional, structured 'Caregiver / Doctor Update Report' covering the last 7 days. Include: 1) Top Symptoms, 2) General Sentiment Trend, 3) Important Notes. Omit extreme emotional venting, focus on factual health trends. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.3)
+
+def process_live_copilot(text):
+    system_prompt = f"You are a clinical copilot listening to a doctor-patient consultation. Output two sections: 'Structured Notes' and 'Suggested Follow-up Questions for Patient'. Do NOT diagnose.\n\Transcript:\n{text}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.2)
+
+def generate_monthly_report(notes):
+    context = build_assistant_context(notes, use_soap=False, use_diary=True)
+    system_prompt = f"Provide a brief, encouraging high-level summary of the user's month based on these logs. Identify any broad recurring themes. Keep it under 60 words. Strict rule: NO medical advice or diagnosis. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.3)
+
+def generate_doctor_prep(notes):
+    context = build_assistant_context(notes, use_soap=True, use_diary=True)
+    system_prompt = f"Based on the following logs, prepare a short, bulleted list of 2-3 key points the user should discuss at their next doctor's appointment. Be informative, not diagnostic. \n\nLogs:\n{context}"
+    return generate_ai_response([{"role": "system", "content": system_prompt}], temp=0.2)
+
 def get_avatar_advice(user_message, context):
     """Unified function to get text and voice advice from OpenAI Assistant."""
     # 1. Generate text and voice advice
@@ -831,37 +928,70 @@ def get_avatar_advice(user_message, context):
         # Add user message to local history
         st.session_state["chat_history"].append({"role": "user", "content": user_message})
         
-        # Get Text Reply
-        reply = generate_chat_reply(user_message, context, st.session_state["chat_history"])
-        
+        if st.session_state.get("active_flow") == "checkin":
+            # Handle user response to check-in
+            reply = ""
+            
+            # Save the entry
+            entities = extract_medical_concepts(user_message)
+            diary_data = process_diary_logic(user_message)
+            
+            if not st.session_state.get("privacy_mode", False):
+                note_record = {
+                    "timestamp": datetime.now().isoformat(),
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "mode": "diary",
+                    "raw_text_redacted": redact_phi(user_message),
+                    "medical_entities": entities,
+                    "diary": diary_data
+                }
+                if "tags" not in note_record["diary"]: note_record["diary"]["tags"] = []
+                note_record["diary"]["tags"].append("Daily Check-in")
+                save_note(note_record)
+                
+                # Update streak and get stats
+                all_notes = load_notes()
+                streak, level, next_unlock = update_streak(all_notes)
+                st.session_state["next_unlock_days"] = next_unlock
+                
+                # Generate reward response
+                insight = generate_insight(user_message)
+                reply = f"Saved ✅ | Streak: 🔥 {streak} day(s) \n\n{insight}\n\n*Next unlock: Level {level + 1} in {next_unlock} more log(s).*"
+            else:
+                reply = "Check-in complete (Privacy Mode Active - not saved)."
+            
+            st.session_state["active_flow"] = None
+            
+        else:
+            # Normal Q&A Flow
+            # Get Text Reply
+            reply = generate_chat_reply(user_message, context, st.session_state["chat_history"])
+            
+            # Auto-log to Analytics (Diary entry) if substantive
+            entities = extract_medical_concepts(user_message)
+            diary_data = process_diary_logic(user_message)
+            has_medical = any(len(v) > 0 for v in entities.values())
+            has_sentiment = abs(diary_data.get("sentiment", 0)) > 0.1
+            
+            if (has_medical or has_sentiment) and not st.session_state.get("privacy_mode", False):
+                note_record = {
+                    "timestamp": datetime.now().isoformat(),
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "mode": "diary",
+                    "raw_text_redacted": redact_phi(user_message),
+                    "medical_entities": entities,
+                    "diary": diary_data
+                }
+                if "tags" not in note_record["diary"]: note_record["diary"]["tags"] = []
+                if "Chat Insight" not in note_record["diary"]["tags"]:
+                    note_record["diary"]["tags"].append("Chat Insight")
+                save_note(note_record)
+
         # Get Voice Advice
         audio_bytes = generate_tts_audio(reply)
         
         # Store Assistant Reply
         st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-        
-        # Auto-log to Analytics (Diary entry)
-        entities = extract_medical_concepts(user_message)
-        diary_data = process_diary_logic(user_message)
-        
-        # Check if message contains relevant health data or sentiment
-        has_medical = any(len(v) > 0 for v in entities.values())
-        has_sentiment = abs(diary_data.get("sentiment", 0)) > 0.1
-        
-        if (has_medical or has_sentiment) and not st.session_state.get("privacy_mode", False):
-            note_record = {
-                "timestamp": datetime.now().isoformat(),
-                "date": datetime.today().strftime("%Y-%m-%d"),
-                "mode": "diary",
-                "raw_text_redacted": redact_phi(user_message),
-                "medical_entities": entities,
-                "diary": diary_data
-            }
-            # Add a special tag for tracking assistant logs
-            if "tags" not in note_record["diary"]: note_record["diary"]["tags"] = []
-            if "Chat Insight" not in note_record["diary"]["tags"]:
-                note_record["diary"]["tags"].append("Chat Insight")
-            save_note(note_record)
 
         # Set Audio & Animation Flags
         if audio_bytes:
@@ -972,6 +1102,21 @@ with st.sidebar:
         st.success("✅ Azure OpenAI Connected")
         st.success("✅ Speech Service Ready")
         
+    # Professional Achievement System
+    st.divider()
+    st.markdown("### Achievements 🏆")
+    all_notes_for_achievements = load_notes()
+    streak, level, next_unl = update_streak(all_notes_for_achievements)
+    
+    st.markdown(f"**Current Level:** {level}")
+    st.markdown(f"**Active Streak:** 🔥 {streak} Day(s)")
+    if streak >= 3:
+        st.markdown("🏅 **3-Day Warrior Badge**")
+    if streak >= 7:
+        st.markdown("🏅 **7-Day Master Badge**")
+    if level >= 5:
+        st.markdown("🌟 **Level 5 Health Tracker**")
+        
     st.divider()
     
     # Persistence Warning for Cloud
@@ -1003,13 +1148,23 @@ status_text = st.session_state["app_status"][1]
 st.markdown(f'<span class="status-pill {status_class}">{status_text}</span>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs([
-    "Patient Data Capture",
+tab1, tab2, tab3, tab4 = st.tabs([
+    "AI Intelligence Hub",
     "Clinical Analytics",
-    "AI Intelligence Hub"
+    "Data Capture & Copilot",
+    "Health Twin Profile"
 ])
 
-with tab1:
+with tab3:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Multilingual Input Settings</div>', unsafe_allow_html=True)
+    st.session_state["input_language"] = st.selectbox(
+        "Select your spoken language for all audio input:",
+        options=["en-US", "es-ES", "fr-FR", "de-DE", "zh-CN", "hi-IN", "ar-SA"],
+        index=["en-US", "es-ES", "fr-FR", "de-DE", "zh-CN", "hi-IN", "ar-SA"].index(st.session_state.get("input_language", "en-US"))
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-header">Data Entry Portal</div>', unsafe_allow_html=True)
     
@@ -1103,6 +1258,13 @@ with tab1:
                 st.markdown('<div class="section-header">SOAP Protocol Output</div>', unsafe_allow_html=True)
                 st.markdown(f"```text\n{soap_txt}\n```")
                 st.download_button("Download SOAP Note", data=f"SOAP NOTE\n{today_str}\n\n{soap_txt}", file_name=f"soap_note_{today_str}.txt")
+                
+                # Consultation Replay
+                st.markdown('<br><b>Consultation Replay (Patient Highlights):</b>', unsafe_allow_html=True)
+                replay_prompt = f"Convert this clinical SOAP note into a friendly, easy-to-understand 'Consultation Replay' for the patient. Highlight the main diagnosis and next steps. Keep it under 100 words.\n\n{soap_txt}"
+                replay_text = generate_ai_response([{"role": "system", "content": "You are a helpful medical explainer for patients."}, {"role": "user", "content": replay_prompt}], temp=0.3)
+                st.info(replay_text)
+                
                 st.markdown('</div>', unsafe_allow_html=True)
                 
                 # Quality Score Card
@@ -1157,6 +1319,79 @@ with tab1:
 
         if not privacy_mode:
             save_note(note_record)
+            
+    # Live Consultation Copilot
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Live Consultation Copilot</div>', unsafe_allow_html=True)
+    st.write("Record a live doctor-patient conversation for structured clinical notes and follow-up suggestions.")
+    copilot_audio = st.audio_input("Record live consultation", key="copilot_audio_upload", label_visibility="collapsed")
+    if copilot_audio is not None:
+        if st.button("Generate Copilot Notes", type="primary", use_container_width=True):
+            with st.spinner("Transcribing and analyzing consultation..."):
+                transcript = transcribe_audio_bytes(copilot_audio.getvalue())
+                if transcript and not transcript.startswith("[Error"):
+                    copilot_notes = process_live_copilot(transcript)
+                    st.markdown("**Transcript:**")
+                    st.info(transcript)
+                    st.markdown("**Copilot Output:**")
+                    st.success(copilot_notes)
+                else:
+                    st.error("Transcription failed.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Medical Document Timeline
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Medical Document Timeline</div>', unsafe_allow_html=True)
+    st.write("Upload a lab result or medical report (TXT or PDF) to merge into your Health Twin context.")
+    uploaded_file = st.file_uploader("Upload TXT/PDF", type=["txt", "pdf"])
+    if uploaded_file is not None:
+        if st.button("Merge Document to History", type="primary", use_container_width=True):
+            with st.spinner("Extracting and summarizing..."):
+                doc_text = ""
+                if uploaded_file.name.endswith(".pdf"):
+                    try:
+                        import PyPDF2
+                        import io
+                        reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.getvalue()))
+                        for page in reader.pages:
+                            doc_text += page.extract_text() + "\n"
+                    except ImportError:
+                        st.error("PyPDF2 is not installed. To parse PDFs, run `pip install PyPDF2`.")
+                    except Exception as e:
+                        st.error(f"Error parsing PDF: {e}")
+                else:
+                    doc_text = uploaded_file.getvalue().decode("utf-8")
+                    
+                if doc_text:
+                    summary_prompt = f"Summarize this medical document to extract key clinical findings, lab results, and action items. Keep it under 100 words.\n\nDocument:\n{doc_text[:3000]}"
+                    summary = generate_ai_response([{"role": "system", "content": "You are a clinical summarizer."}, {"role": "user", "content": summary_prompt}])
+                    note_record2 = {
+                        "timestamp": datetime.now().isoformat(),
+                        "date": datetime.today().strftime("%Y-%m-%d"),
+                        "mode": "document",
+                        "raw_text_redacted": f"[Document Upload: {uploaded_file.name}]\n\n{doc_text[:500]}...",
+                        "diary": {"tags": ["Document"], "sentiment": 0.0},
+                        "document_summary": summary,
+                        "medical_entities": {"symptoms": [], "conditions": [], "medications": []}
+                    }
+                    if not privacy_mode: 
+                        save_note(note_record2)
+                        st.success(f"Document '{uploaded_file.name}' merged into timeline!")
+                    st.info(f"**AI Summary:**\n{summary}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Care Circle Sharing
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Care Circle Sharing</div>', unsafe_allow_html=True)
+    st.write("Generate a safe, professional 7-day update report to share with your caregiver or doctor.")
+    if st.button("Generate Caregiver Report"):
+        with st.spinner("Compiling report..."):
+            notes_for_care = load_notes()
+            care_report = generate_care_circle_report(notes_for_care)
+            st.markdown(care_report)
+            today_str2 = datetime.today().strftime("%Y-%m-%d")
+            st.download_button("Download Report (.txt)", data=care_report, file_name=f"caregiver_report_{today_str2}.txt")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
     all_notes = load_notes()
@@ -1262,10 +1497,91 @@ with tab2:
             st.write("No recurring symptoms detected yet.")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # Burnout / Stress Trend Dashboard
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Burnout & Stress Trend Dashboard</div>', unsafe_allow_html=True)
+        if isinstance(diary_notes, list) and len(diary_notes) > 1:
+            try:
+                graph_notes = diary_notes[-10:]
+                dates_stress = [str(n.get("date", "Unknown")) for n in graph_notes if isinstance(n, dict)]
+                stress_scores = []
+                for n in graph_notes:
+                    if isinstance(n, dict):
+                        d_info = n.get("diary", {})
+                        if isinstance(d_info, dict):
+                            stress_scores.append(float(d_info.get("stress_score", 0.0)))
+                        else:
+                            stress_scores.append(0.0)
+                    else:
+                        stress_scores.append(0.0)
+
+                fig2, ax2 = plt.subplots(figsize=(6, 3))
+                ax2.plot(dates_stress, stress_scores, marker='x', color='#ef4444', linewidth=2)
+                ax2.fill_between(dates_stress, stress_scores, color='#ef4444', alpha=0.1)
+                ax2.set_ylim(0, max(max(stress_scores)+1, 5))
+                ax2.spines['top'].set_visible(False)
+                ax2.spines['right'].set_visible(False)
+                ax2.set_ylabel("Mental Load Score")
+                plt.xticks(rotation=45, ha='right')
+                fig2.tight_layout()
+                st.pyplot(fig2)
+            except Exception as e:
+                st.error(f"Could not render graph: {e}")
+        else:
+            st.info("Log more entries to map your Burnout and Stress Trends.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Symptom Pattern Awareness Timeline
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Symptom Pattern Awareness Timeline</div>', unsafe_allow_html=True)
+        st.write("Cross-referencing Sentiment (Mood) with Symptom Occurrences.")
+        if isinstance(diary_notes, list) and len(diary_notes) > 1:
+            try:
+                graph_notes = diary_notes[-10:]
+                dates = [str(n.get("date", "Unknown")) for n in graph_notes if isinstance(n, dict)]
+                scores = []
+                symptom_flags = []
+                for n in graph_notes:
+                    if isinstance(n, dict):
+                        d_info = n.get("diary", {})
+                        s_info = n.get("medical_entities", {}).get("symptoms", [])
+                        scores.append(float(d_info.get("sentiment", 0.0)) if isinstance(d_info, dict) else 0.0)
+                        symptom_flags.append(len(s_info))
+                    else:
+                        scores.append(0.0)
+                        symptom_flags.append(0)
+
+                fig3, ax3 = plt.subplots(figsize=(6, 3))
+                ax3.plot(dates, scores, marker='o', color='#0ea5e9', linewidth=2, label="Mood")
+                
+                # Plot circles where symptoms were reported
+                for i, count in enumerate(symptom_flags):
+                    if count > 0:
+                        ax3.scatter(dates[i], scores[i], color='#f59e0b', s=count*50, zorder=5, label="Symptom" if i==0 else "")
+                        
+                ax3.axhline(0, color='gray', linestyle='--', linewidth=1)
+                ax3.set_ylim(-1.1, 1.1)
+                ax3.spines['top'].set_visible(False)
+                ax3.spines['right'].set_visible(False)
+                plt.xticks(rotation=45, ha='right')
+                
+                # Deduplicate legends
+                handles, labels = ax3.get_legend_handles_labels()
+                by_label = dict(zip(labels, handles))
+                ax3.legend(by_label.values(), by_label.keys(), loc="lower left")
+                
+                fig3.tight_layout()
+                st.pyplot(fig3)
+            except Exception as e:
+                st.error(f"Could not render graph: {e}")
+        else:
+            st.info("Log more entries to visualize the relationship between your mood and symptoms.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # AI Care Assistant Tab (Chat UI)
 # -----------------------------------------------------------------------------
-with tab3:
+with tab1:
     st.caption("AI Consultation Hub — not medical advice or diagnosis.")
 
     # Main Consultation Layout
@@ -1324,16 +1640,55 @@ with tab3:
         # Input handling
         user_input = st.chat_input("Message your assistant...")
         
-        # Quick Prompts
+        # Action Buttons
         st.write("") # Spacer
-        qp1, qp2, qp3 = st.columns(3)
-        prompt_clicked = None
-        if qp1.button("Diary Summary", use_container_width=True): prompt_clicked = "Summarize my recent diary entries"
-        if qp2.button("Spot Patterns", use_container_width=True): prompt_clicked = "What health patterns do you see?"
-        if qp3.button("Doctor Prep", use_container_width=True): prompt_clicked = "Help me prepare for my next clinic visit"
+        
+        # Row 1: Daily Check-in (Prominent)
+        if st.button("🌟 Start Daily Check-in", use_container_width=True, type="primary"):
+            st.session_state["active_flow"] = "checkin"
+            st.session_state["chat_history"].append({"role": "assistant", "content": "How are you feeling today? Any specific symptoms you'd like to note?"})
+            st.rerun()
+            
+        # Row 2: Analytics
+        st.markdown("**Behavioral Analytics**", help="Generates AI insights purely from your logs")
+        qp1, qp2 = st.columns(2)
+        action_type = None
+        
+        if qp1.button("Spot Patterns", use_container_width=True): 
+            action_type = "patterns"
+        if qp2.button("Explain My Month", use_container_width=True): 
+            action_type = "monthly_report"
 
-        if prompt_clicked:
-            user_input = prompt_clicked
+        # Row 3: Consultation Prep
+        st.markdown("**Consultation Prep**", help="Guides to prepare before clinical visits")
+        qp3, qp4 = st.columns(2)
+        if qp3.button("Doctor Prep Highlights", use_container_width=True): 
+            action_type = "doctor_prep"
+        if qp4.button("Generate Questions", use_container_width=True): 
+            action_type = "question_prep"
+
+        if action_type:
+            with st.spinner("Analyzing..."):
+                if action_type == "patterns":
+                    reply = generate_weekly_summary(notes)
+                    st.session_state["chat_history"].append({"role": "user", "content": "Spot Patterns"})
+                elif action_type == "doctor_prep":
+                    reply = generate_doctor_prep(notes)
+                    st.session_state["chat_history"].append({"role": "user", "content": "Doctor Prep"})
+                elif action_type == "monthly_report":
+                    reply = generate_monthly_report(notes)
+                    st.session_state["chat_history"].append({"role": "user", "content": "Explain My Month"})
+                elif action_type == "question_prep":
+                    reply = generate_question_prep(notes)
+                    st.session_state["chat_history"].append({"role": "user", "content": "Generate Questions for my Doctor"})
+                
+                audio_bytes = generate_tts_audio(reply)
+                st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+                
+                if audio_bytes:
+                    st.session_state["last_audio"] = audio_bytes
+                    st.session_state["new_audio_flag"] = True
+                st.rerun()
 
         if user_input:
             get_avatar_advice(user_input, context)
@@ -1366,8 +1721,38 @@ with tab3:
     with coll3:
         st.session_state["use_soap_hub"] = st.toggle("Include SOAP Notes", value=True)
 
-    with st.expander("Technical Insight: Knowledge Context"):
+    with st.expander("AI Explainability Panel: Model Context & Decisions"):
+        st.write("This panel shows EXACTLY what data the AI sees to formulate responses.")
         st.code(context if context else "No context loaded.")
+
+with tab4:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">AI Health Twin Profile</div>', unsafe_allow_html=True)
+    st.markdown("Your Health Twin is exclusively generated from your log history.")
+    
+    if st.button("Generate/Update AI Health Twin", type="primary"):
+        with st.spinner("Analyzing history..."):
+            notes = load_notes()
+            summary = generate_health_twin_summary(notes)
+            st.session_state["health_twin_summary"] = summary
+    
+    st.info(st.session_state["health_twin_summary"])
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Micro-Habit Prescriptions</div>', unsafe_allow_html=True)
+    st.markdown("Small, actionable behavioral modifications based on your recent symptoms.")
+    if st.button("Prescribe New Micro-Habits"):
+        with st.spinner("Generating habits..."):
+            notes = load_notes()
+            st.session_state["habits"] = generate_micro_habits(notes)
+            
+    if st.session_state["habits"]:
+        for i, h in enumerate(st.session_state["habits"]):
+            st.checkbox(h, key=f"habit_{i}")
+    else:
+        st.write("No habits prescribed today. Click above to generate.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True) # End main-container
 

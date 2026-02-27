@@ -98,5 +98,28 @@
       ],
       "summary": "Have a headache and it's hurting?..."
     }
+  },
+  {
+    "timestamp": "2026-02-27T20:53:32.922552",
+    "date": "2026-02-27",
+    "mode": "diary",
+    "raw_text_redacted": "I'm very good right now.",
+    "medical_entities": {
+      "symptoms": [],
+      "conditions": [
+        "I'm"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": 0.4927,
+      "tags": [
+        "Daily Check-in"
+      ],
+      "suggestions": [],
+      "summary": "I'm very good right now...."
+    }
   }
 ]
