@@ -1288,15 +1288,8 @@ with tab3:
     with col_interaction:
         # 2. Voice & Interaction (Right Column)
         st.markdown("### Talk with your Doctor")
-        if HAS_MIC_RECORDER:
-            hub_audio = mic_recorder(
-                start_prompt="Start Recording Voice",
-                stop_prompt="Stop Recording",
-                key='hub_recorder'
-            )
-        else:
-            st.error("Microphone library missing.")
-            hub_audio = None
+        
+        hub_audio = st.audio_input("Record voice note", key="hub_recorder", label_visibility="collapsed")
 
         # Load context
         notes = load_notes()
@@ -1307,13 +1300,18 @@ with tab3:
         st.markdown('<div class="card" style="margin-top: 1rem; padding: 1rem;">', unsafe_allow_html=True)
         
         # Process Voice Input
-        if hub_audio:
-            audio_id = hash(hub_audio['bytes'])
-            if st.session_state["last_processed_audio"] != audio_id:
+        if hub_audio is not None:
+            audio_bytes = hub_audio.getvalue()
+            audio_id = hash(audio_bytes)
+            
+            if st.session_state.get("last_processed_audio") != audio_id:
                 st.session_state["last_processed_audio"] = audio_id
-                voice_text = transcribe_audio(hub_audio['bytes'])
-                if voice_text:
-                    get_avatar_advice(voice_text, context)
+                with st.spinner("Processing voice input..."):
+                    voice_text = transcribe_audio_bytes(audio_bytes)
+                    if voice_text and not voice_text.startswith("[Error"):
+                        get_avatar_advice(voice_text, context)
+                    elif voice_text.startswith("[Error"):
+                        st.error(voice_text)
         
         # Display History or Welcome
         if not st.session_state["chat_history"]:

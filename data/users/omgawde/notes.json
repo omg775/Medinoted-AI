@@ -70,5 +70,33 @@
       "suggestions": [],
       "summary": "I have a headache..."
     }
+  },
+  {
+    "timestamp": "2026-02-27T20:19:42.734672",
+    "date": "2026-02-27",
+    "mode": "diary",
+    "raw_text_redacted": "Have a headache and it's hurting?",
+    "medical_entities": {
+      "symptoms": [
+        "headache"
+      ],
+      "conditions": [
+        "hurting"
+      ],
+      "medications": [],
+      "vitals": [],
+      "procedures": []
+    },
+    "diary": {
+      "sentiment": -0.4019,
+      "tags": [
+        "symptoms",
+        "Chat Insight"
+      ],
+      "suggestions": [
+        "- Consider rest, hydration, talking to someone you trust, or a clinician if concerned."
+      ],
+      "summary": "Have a headache and it's hurting?..."
+    }
   }
 ]
