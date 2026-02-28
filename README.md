@@ -54,9 +54,14 @@ A professional, dual-feature web application that functions as both a Clinical N
    - Use the **tabs** at the top of the interface to switch between the Clinical Note Cleaner and the AI Health Diary.
    - For the Diary, enter a new entry and click "Save Entry". The app will store your data locally in `diary_entries.json` and immediately update your dashboard.
 
-OUR deployment:
-www.medinoted.com
 
 Screenshot
 <img width="2914" height="1624" alt="image" src="https://github.com/user-attachments/assets/a8c89737-119c-4632-bde5-f11c5887f66f" />
 
+<img width="2940" height="1642" alt="image" src="https://github.com/user-attachments/assets/afa693aa-abe2-45dc-bc5d-2296ea5f434b" />
+
+<img width="2930" height="1562" alt="image" src="https://github.com/user-attachments/assets/2f80688b-7865-4f45-8649-7bfb04746afd" />
+
+
+OUR deployment:
+www.medinoted.com
