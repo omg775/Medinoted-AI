@@ -84,10 +84,15 @@ st.markdown("""
     :root {
         --ms-orange: #F25022;
         --ms-green: #7FBA00;
-        --ms-blue: #00A4EF;
+        --ms-blue: #3A86FF;
         --ms-yellow: #FFB900;
         --ms-gray: #737373;
         
+        /* Brand Palette */
+        --brand-primary: #3A86FF;
+        --brand-secondary: #2EC4B6;
+        --brand-accent: #9B5DE5;
+
         --ms-neutral-primary: #201F1E;
         --ms-neutral-secondary: #605E5C;
         --ms-neutral-tertiary: #EDEBE9;
@@ -104,8 +109,8 @@ st.markdown("""
     .stApp { 
         background-color: var(--background-color);
         background-image: 
-            radial-gradient(at 0% 0%, rgba(0, 164, 239, 0.03) 0px, transparent 40%),
-            radial-gradient(at 100% 100%, rgba(127, 186, 0, 0.03) 0px, transparent 40%);
+            radial-gradient(at 0% 0%, rgba(58, 134, 255, 0.04) 0px, transparent 40%),
+            radial-gradient(at 100% 100%, rgba(46, 196, 182, 0.04) 0px, transparent 40%);
         font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         color: var(--text-color);
     }
@@ -113,17 +118,17 @@ st.markdown("""
     [data-theme="light"] .stApp { 
         background-color: var(--ms-pure-white); 
         background-image: 
-            radial-gradient(at 0% 0%, rgba(0, 164, 239, 0.05) 0px, transparent 40%),
-            radial-gradient(at 100% 0%, rgba(127, 186, 0, 0.02) 0px, transparent 40%);
+            radial-gradient(at 0% 0%, rgba(58, 134, 255, 0.06) 0px, transparent 40%),
+            radial-gradient(at 100% 0%, rgba(46, 196, 182, 0.03) 0px, transparent 40%);
     }
 
     [data-theme="dark"] .stApp { 
         background-image: 
             url("https://www.transparenttextures.com/patterns/carbon-fibre.png"),
-            radial-gradient(at 0% 0%, rgba(242, 80, 34, 0.06) 0px, transparent 40%),
-            radial-gradient(at 100% 0%, rgba(127, 186, 0, 0.06) 0px, transparent 40%),
-            radial-gradient(at 0% 100%, rgba(255, 185, 0, 0.06) 0px, transparent 40%),
-            radial-gradient(at 100% 100%, rgba(0, 164, 239, 0.06) 0px, transparent 40%);
+            radial-gradient(at 0% 0%, rgba(58, 134, 255, 0.08) 0px, transparent 40%),
+            radial-gradient(at 100% 0%, rgba(46, 196, 182, 0.06) 0px, transparent 40%),
+            radial-gradient(at 0% 100%, rgba(155, 93, 229, 0.06) 0px, transparent 40%),
+            radial-gradient(at 100% 100%, rgba(58, 134, 255, 0.06) 0px, transparent 40%);
         background-blend-mode: overlay;
     }
     
@@ -204,8 +209,8 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.04);
     }
 
-    [data-testid="stVerticalBlock"] > div:nth-child(1) .card { border-top: 6px solid var(--ms-orange); }
-    [data-testid="stVerticalBlock"] > div:nth-child(2) .card { border-top: 6px solid var(--ms-green); }
+    [data-testid="stVerticalBlock"] > div:nth-child(1) .card { border-top: 6px solid var(--brand-primary); }
+    [data-testid="stVerticalBlock"] > div:nth-child(2) .card { border-top: 6px solid var(--brand-secondary); }
 
     .privacy-banner { 
         background: rgba(255, 185, 0, 0.08); 
@@ -225,7 +230,7 @@ st.markdown("""
         color: var(--text-color); 
         font-size: var(--fs-header); 
         margin-bottom: 2rem; 
-        border-left: clamp(5px, 1.5vw, 8px) solid var(--ms-blue); 
+        border-left: clamp(5px, 1.5vw, 8px) solid var(--brand-primary); 
         padding-left: clamp(1rem, 2.5vw, 2rem);
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -257,9 +262,9 @@ st.markdown("""
         width: clamp(160px, 30vw, 220px);
         height: clamp(160px, 30vw, 220px);
         border-radius: 50%;
-        background: conic-gradient(from 180deg at 50% 50%, var(--ms-blue), var(--ms-green), var(--ms-yellow), var(--ms-orange), var(--ms-blue));
+        background: conic-gradient(from 180deg at 50% 50%, var(--brand-primary), var(--brand-secondary), var(--brand-accent), var(--brand-primary));
         filter: blur(2px);
-        box-shadow: 0 0 clamp(40px, 10vw, 100px) rgba(0, 164, 239, 0.25);
+        box-shadow: 0 0 clamp(40px, 10vw, 100px) rgba(58, 134, 255, 0.30);
         animation: fluidRotate 10s infinite linear;
         position: relative;
         z-index: 2;
@@ -297,9 +302,9 @@ st.markdown("""
     }
 
     .stTabs [aria-selected="true"] {
-        color: var(--ms-blue) !important;
+        color: var(--brand-primary) !important;
         background: transparent !important;
-        box-shadow: 0 clamp(-6px, -1vw, -10px) 0px var(--ms-blue) inset !important;
+        box-shadow: 0 clamp(-6px, -1vw, -10px) 0px var(--brand-primary) inset !important;
     }
     [data-theme="light"] [aria-selected="true"] { background: var(--ms-azure-white) !important; }
 
@@ -314,9 +319,43 @@ st.markdown("""
         transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
     }
 
+    /* Primary button — logo blue→green gradient */
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background: linear-gradient(90deg, #2563EB 0%, #16A34A 100%) !important;
+        color: #ffffff !important;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(90deg, #1d4ed8 0%, #15803d 100%) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35) !important;
+    }
+
+    /* Radio button — selected dot and ring brand blue */
+    [data-testid="stRadio"] [role="radio"][aria-checked="true"] + div,
+    [data-testid="stRadio"] [aria-checked="true"] {
+        color: #2563EB !important;
+    }
+    [data-testid="stRadio"] [role="radio"] div[data-checked="true"],
+    [data-testid="stRadio"] label[data-checked="true"] span:first-child {
+        /* background-color: #2563EB !important; */
+        border-color: #2563EB !important;
+    }
+    /* Catch-all for the inner filled circle */
+    [data-testid="stRadio"] input[type="radio"]:checked + div > div {
+        /* background-color: #2563EB !important; */
+        border-color: #2563EB !important;
+    }
+    [data-testid="stRadio"] [data-baseweb="radio"] [class*="radioMark"] {
+        /* background-color: #2563EB !important; */
+        border-color: #2563EB !important;
+    }
+
+
     .chat-bubble-assistant {
         background: var(--secondary-background-color) !important;
-        border-left: 8px solid var(--ms-blue) !important;
+        border-left: 8px solid var(--brand-primary) !important;
         color: var(--text-color) !important;
         font-weight: 600;
         padding: clamp(1rem, 3vw, 1.5rem) !important;
@@ -1004,21 +1043,174 @@ def get_avatar_advice(user_message, context):
 # Authentication UI
 # -----------------------------------------------------------------------------
 if not st.session_state["is_authenticated"]:
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.markdown("""<div class="header-wrapper"><h1 class="main-title">Health Assistant AI</h1></div>""", unsafe_allow_html=True)
-    
-    col_spacer1, col_auth, col_spacer2 = st.columns([1, 2, 1])
-    with col_auth:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        
-        mode = st.radio("Select Mode:", ["Login", "Register"], horizontal=True)
-        
-        username_input = st.text_input("Username")
-        password_input = st.text_input("Password", type="password")
-        
+    import base64
+
+    def img_to_base64(path):
+        try:
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            return None
+
+    avatar_css = load_avatar_css()
+    logo_b64   = img_to_base64("logo.png")
+    logo_src   = f"data:image/png;base64,{logo_b64}" if logo_b64 else ""
+
+    # --- Full-page premium CSS ---
+    st.markdown(avatar_css, unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+        /* Hide Streamlit chrome */
+        [data-testid="stToolbar"], header { display: none !important; }
+        footer { visibility: hidden !important; }
+
+        /* Make the app take full height */
+        .stApp { background: #f0f4f9; }
+        [data-testid="stAppViewContainer"] { padding: 0 !important; }
+        [data-testid="stMainBlockContainer"] { padding: 0 !important; max-width: 100% !important; }
+        section[data-testid="stMain"] > div { padding: 0 !important; }
+
+        /* Two column layout */
+        [data-testid="stHorizontalBlock"] {
+            gap: 0 !important;
+            min-height: 100vh;
+        }
+
+        /* LEFT column — blue gradient hero */
+        [data-testid="stHorizontalBlock"] > div:first-child {
+            background: linear-gradient(160deg, #1a3a6b 0%, #3A86FF 55%, #2EC4B6 100%) !important;
+            min-height: 100vh;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+            overflow: hidden;
+            padding: 0 !important;
+        }
+        [data-testid="stHorizontalBlock"] > div:first-child::before {
+            content: '';
+            position: absolute;
+            top: -100px; right: -100px;
+            width: 350px; height: 350px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        [data-testid="stHorizontalBlock"] > div:first-child::after {
+            content: '';
+            position: absolute;
+            bottom: 100px; left: -80px;
+            width: 220px; height: 220px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* RIGHT column — white form panel */
+        [data-testid="stHorizontalBlock"] > div:last-child {
+            background: #ffffff !important;
+            min-height: 100vh;
+            display: flex !important;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 18vh 3.5rem 3rem !important;
+            box-shadow: -16px 0 50px rgba(0,0,0,0.08);
+        }
+
+        /* Ensure Streamlit widgets inside right column aren't squished */
+        [data-testid="stHorizontalBlock"] > div:last-child > div {
+            width: 100%;
+        }
+
+        /* Hide the label above radio */
+        [data-testid="stRadio"] > label { display: none !important; }
+
+        /* Remove highlight box behind Login / Register text */
+        [data-testid="stRadio"] label,
+        [data-testid="stRadio"] div[data-baseweb="radio"],
+        [data-testid="stRadio"] div[data-baseweb="radio"] div {
+            background: none !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stRadio"] label:hover {
+            background: none !important;
+            background-color: rgba(0,0,0,0.04) !important;
+        }
+
+        /* Outer ring — brand blue */
+        [data-baseweb="radio"] > div {
+            border-color: #2563EB !important;
+        }
+
+        /* Inner filled dot — override Streamlit's red with brand blue */
+        [data-baseweb="radio"] > div > div {
+            /* background-color: #2563EB !important; */
+        }
+
+        /* SVG dot (some Streamlit versions) */
+        [data-baseweb="radio"] svg circle {
+            fill: #2563EB !important;
+            stroke: #2563EB !important;
+        }
+
+
+    </style>
+    """, unsafe_allow_html=True)
+
+    left_col, right_col = st.columns([1, 1])
+
+    # ---- LEFT: Hero panel ----
+    with left_col:
+        # Logo top-left
+        logo_top_html = f"""
+        <div style="padding: 1.5rem 1.5rem 0; z-index:3; position:relative;">
+            <img src="{logo_src}" style="height:200px; object-fit:contain;" />
+        </div>
+        """ if logo_src else ""
+
+        # Avatar centred (Animated Intelligent Avatar)
+        avatar_html = get_avatar_html()
+
+        # Tagline below avatar — smaller & subdued
+        tagline_html = """
+        <div style="text-align:center; padding: 1rem 2rem 2rem; z-index:2; position:relative;">
+            <p style="color:rgba(255,255,255,0.70); font-size:0.82rem; font-weight:600;
+                       letter-spacing:0.06em; text-transform:uppercase; line-height:1.5; margin:0 0 0.4rem;">
+                Your AI-Powered Health Companion
+            </p>
+            <p style="color:rgba(255,255,255,0.45); font-size:0.75rem; max-width:260px;
+                       margin:0 auto; line-height:1.6;">
+                Secure, intelligent note-taking and health insights — all in one place.
+            </p>
+        </div>
+        """
+        st.markdown(logo_top_html + avatar_html + tagline_html, unsafe_allow_html=True)
+
+    # ---- RIGHT: Auth form ----
+    with right_col:
+
+        st.markdown(
+            '<h2 style="text-align:center; font-size:2.0rem; font-weight:800; margin:0 0 0.3rem;'
+            'background: linear-gradient(90deg, #2563EB 0%, #16A34A 100%);'
+            '-webkit-background-clip: text; -webkit-text-fill-color: transparent;'
+            'background-clip: text;">Welcome to Medinoted.com</h2>'
+            '<p style="text-align:center; color:#2EC4B6; font-size:0.95rem; margin:0 0 2rem; font-weight:600;">Sign in to your account</p>',
+            unsafe_allow_html=True
+        )
+
+        mode = st.radio("", ["Login", "Register"], horizontal=True, label_visibility="collapsed")
+        mode = "Login" if "Login" in mode else "Register"
+
+        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+        username_input = st.text_input("Username", placeholder="Enter your username")
+        password_input = st.text_input("Password", type="password", placeholder="Enter your password")
+
         if mode == "Register":
-            password_confirm = st.text_input("Confirm Password", type="password")
-            if st.button("Create Account", type="primary", use_container_width=True):
+            password_confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password")
+            if st.button("Create Account →", type="primary", use_container_width=True):
                 if not username_input or not password_input:
                     st.error("Please fill all fields.")
                 elif len(password_input) < 8:
@@ -1038,10 +1230,10 @@ if not st.session_state["is_authenticated"]:
                             "created_at": datetime.now().isoformat()
                         }
                         save_users_db(db)
-                        user_data_dir(safe_name) # Initialize dir
-                        st.success("Account created successfully. Please login.")
+                        user_data_dir(safe_name)
+                        st.success("✅ Account created! Please login.")
         else:
-            if st.button("Login", type="primary", use_container_width=True):
+            if st.button("Login →", type="primary", use_container_width=True):
                 if not username_input or not password_input:
                     st.error("Please enter credentials.")
                 else:
@@ -1052,7 +1244,6 @@ if not st.session_state["is_authenticated"]:
                         if bcrypt.checkpw(password_input.encode('utf-8'), stored_hash):
                             st.session_state["is_authenticated"] = True
                             st.session_state["username"] = safe_name
-                            # Clear potentially stateful data on login
                             st.session_state["transcribed_text"] = ""
                             st.session_state["chat_history"] = []
                             st.rerun()
@@ -1060,10 +1251,18 @@ if not st.session_state["is_authenticated"]:
                             st.error("Invalid credentials.")
                     else:
                         st.error("Invalid credentials.")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown(
+            '<p style="font-size:0.75rem; color:#b0b8c1; text-align:center; margin-top:1.5rem;">'
+            '🔒 Demo uses synthetic/anonymized data. Not a diagnostic tool.</p>',
+            unsafe_allow_html=True
+        )
+
+
     st.stop()
+
+
+
 
 # -----------------------------------------------------------------------------
 # Main UI Construction
