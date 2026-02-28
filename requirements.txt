@@ -16,3 +16,4 @@ PyPDF2
 SpeechRecognition
 openai-whisper
 fpdf
+markdown
