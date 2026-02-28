@@ -480,8 +480,12 @@ if "notes_db" not in st.session_state:
     st.session_state["notes_db"] = []
 if "app_status" not in st.session_state:
     st.session_state["app_status"] = ("ready", "Ready")
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+if "last_transcript" not in st.session_state:
+    st.session_state["last_transcript"] = ""
+if "last_ai_reply" not in st.session_state:
+    st.session_state["last_ai_reply"] = ""
 if "avatar_talking" not in st.session_state:
     st.session_state["avatar_talking"] = False
 if "last_processed_audio" not in st.session_state:
@@ -695,7 +699,7 @@ def clear_local_history():
     if os.path.exists(path):
         os.remove(path)
     st.session_state["notes_db"] = []
-    st.session_state["chat_history"] = []
+    st.session_state["messages"] = []
 
 def load_users_db():
     os.makedirs("data", exist_ok=True)
@@ -726,6 +730,13 @@ def redact_phi(text):
     text = re.sub(r'(?i)(dob|date of birth|birthdate)[\s:]*\d{1,4}[-/]\d{1,2}[-/]\d{1,4}', r'\1: [REDACTED_DOB]', text)
     text = re.sub(r'(?i)(patient name|name)[\s:]+([A-Z][a-z]+ [A-Z][a-z]+)', r'\1: [REDACTED_NAME]', text)
     return text
+
+def clean_html(raw_html):
+    """Removes HTML tags from a string for safe text display."""
+    if not raw_html: return ""
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', str(raw_html))
+    return cleantext
 
 # -----------------------------------------------------------------------------
 # Audio & Speech-to-Text (Browser-based)
@@ -765,8 +776,8 @@ def transcribe_audio_bytes(audio_bytes):
             
         speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         
-        # Support common languages for auto-detection
-        languages = ["en-US", "es-ES", "fr-FR", "de-DE", "zh-CN", "hi-IN", "ar-SA"]
+        # Support common languages for auto-detection (Azure limit: max 4 for DetectAudioAtStart)
+        languages = ["en-US", "es-ES", "fr-FR", "zh-CN"]
         auto_detect_source_language_config = speechsdk.languageconfig.AutoDetectSourceLanguageConfig(languages=languages)
         
         audio_config = speechsdk.AudioConfig(filename=tmp_path)
@@ -788,9 +799,13 @@ def transcribe_audio_bytes(audio_bytes):
         elif result.reason == speechsdk.ResultReason.NoMatch:
             return "" # Safe to return empty for ambient noise
         elif result.reason == speechsdk.ResultReason.Canceled:
-            return "[Error: Speech recognition failed. Please check microphone format or Azure configuration.]"
+            cancellation_details = result.cancellation_details
+            msg = f"[Error: Speech recognition failed. Reason: {cancellation_details.reason}]"
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                msg += f" Details: {cancellation_details.error_details}"
+            return msg
     except Exception as e:
-        return "[Error: Speech recognition failed. Please check microphone format or Azure configuration.]"
+        return f"[Error: Speech recognition exception: {str(e)}]"
 
 # -----------------------------------------------------------------------------
 # Medical NER (SciSpacy + Keyword Fallback)
@@ -1056,7 +1071,7 @@ def build_assistant_context(notes, use_soap=True, use_diary=True):
             
     return context.strip()
 
-def generate_chat_reply(user_message, context, chat_history):
+def generate_chat_reply(user_message, context, history):
     if detect_red_flags(user_message):
         return "SAFETY ALERT: Seek urgent medical help immediately by calling local emergency services or going to the nearest emergency room. If you are a minor, please talk to a trusted adult right away."
     
@@ -1075,7 +1090,7 @@ Context:
 {context if context else "No recent logs available."}
 """
     messages = [{"role": "system", "content": system_prompt}]
-    for msg in chat_history[-5:]: # last 5 to keep context short
+    for msg in history[-5:]: # last 5 to keep context short
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": user_message})
     
@@ -1262,8 +1277,9 @@ def get_avatar_advice(user_message, context):
     """Unified function to get text and voice advice from OpenAI Assistant."""
     # 1. Generate text and voice advice
     with st.spinner("Avatar is synthesizing advice..."):
-        # Add user message to local history
-        st.session_state["chat_history"].append({"role": "user", "content": user_message})
+        # Add user message to persistent history
+        st.session_state["messages"].append({"role": "user", "content": user_message})
+        st.session_state["last_transcript"] = user_message
         
         if st.session_state.get("active_flow") == "checkin":
             # Handle user response to check-in
@@ -1302,7 +1318,7 @@ def get_avatar_advice(user_message, context):
         else:
             # Normal Q&A Flow
             # Get Text Reply
-            reply = generate_chat_reply(user_message, context, st.session_state["chat_history"])
+            reply = generate_chat_reply(user_message, context, st.session_state["messages"])
             
             # Auto-log to Analytics (Diary entry) if substantive
             entities = extract_medical_concepts(user_message)
@@ -1327,15 +1343,14 @@ def get_avatar_advice(user_message, context):
         # Get Voice Advice
         audio_bytes = generate_tts_audio(reply)
         
-        # Store Assistant Reply
-        st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+        # Store Assistant Reply persistently
+        st.session_state["messages"].append({"role": "assistant", "content": reply})
+        st.session_state["last_ai_reply"] = reply
 
         # Set Audio & Animation Flags
         if audio_bytes:
             st.session_state["last_audio"] = audio_bytes
             st.session_state["new_audio_flag"] = True
-            
-    st.rerun()
 
 # -----------------------------------------------------------------------------
 # Authentication UI
@@ -1547,7 +1562,7 @@ if not st.session_state["is_authenticated"]:
                                 st.session_state["is_authenticated"] = True
                                 st.session_state["username"] = safe_name
                                 st.session_state["transcribed_text"] = ""
-                                st.session_state["chat_history"] = []
+                                st.session_state["messages"] = []
                                 st.rerun()
                             else:
                                 st.error("Invalid credentials.")
@@ -1592,15 +1607,20 @@ def render_sidebar():
         st.markdown(f"### 👋 Welcome, {st.session_state['username']}")
         
         pages = ["Dashboard", "Daily Check-In", "AI Doctor", "Insights", "Reports", "Find Care", "Settings"]
-        # Use simple radio for routing
-        choice = st.radio("Navigation", pages, label_visibility="collapsed")
+        
+        # Ensure radio stays in sync with programmatically set pages
+        current_idx = 0
+        if "current_page" in st.session_state and st.session_state["current_page"] in pages:
+            current_idx = pages.index(st.session_state["current_page"])
+            
+        choice = st.radio("Navigation", pages, index=current_idx, label_visibility="collapsed")
         st.session_state["current_page"] = choice
         
         st.divider()
         if st.button("Logout", use_container_width=True):
             st.session_state["is_authenticated"] = False
             st.session_state["username"] = None
-            st.session_state["chat_history"] = []
+            st.session_state["messages"] = []
             st.session_state["transcribed_text"] = ""
             st.rerun()
             
@@ -1619,14 +1639,6 @@ def render_sidebar():
         st.markdown(f"**Active Streak:** 🔥 {streak} Day(s)")
 
 def render_dashboard():
-    import re
-    def clean_html(raw_html):
-        """Removes HTML tags from a string for safe text display."""
-        if not raw_html: return ""
-        cleanr = re.compile('<.*?>')
-        cleantext = re.sub(cleanr, '', str(raw_html))
-        return cleantext
-
     st.markdown('<div class="section-header" style="margin-bottom: 1.5rem; border-left-color: #3b82f6;">Patient Portal Dashboard</div>', unsafe_allow_html=True)
     
     # 1. Patient Status Panel (Top KPI Cards)
@@ -1866,7 +1878,7 @@ def render_reports_page():
                     <b>{mode_icon} {n.get('mode', 'Note').upper()}</b>
                     <span style="font-size: 0.8rem; color: #64748b;">{n.get('date')}</span>
                 </div>
-                <div style="margin-top: 5px; font-size: 0.95rem;">{n.get('raw_text_redacted', '')}</div>
+                <div style="margin-top: 5px; font-size: 0.95rem;">{clean_html(n.get('raw_text_redacted', ''))}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1876,6 +1888,8 @@ def render_reports_page():
 
 render_sidebar()
 render_privacy_badges()
+
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
 current_page = st.session_state.get("current_page", "Dashboard")
 
@@ -1907,65 +1921,63 @@ elif current_page == "AI Doctor":
         """, unsafe_allow_html=True)
 
         st.markdown('<div style="margin-bottom: 1rem;">', unsafe_allow_html=True)
-        audio_b64 = render_auto_mic(key="hub_recorder")
+        recorded_audio = st.audio_input("Record your message", key="voice_chat_input")
         st.markdown('</div>', unsafe_allow_html=True)
-        
-        hub_audio_bytes = None
-        if audio_b64:
-            import base64
-            hub_audio_bytes = base64.b64decode(audio_b64)
 
         # Load context
         notes = load_notes()
         context = build_assistant_context(notes, True, True)
 
-        st.markdown('<div class="card" style="margin-top: 1rem; padding: 1.5rem;">', unsafe_allow_html=True)
-        
-        if hub_audio_bytes is not None:
-            audio_id = hash(hub_audio_bytes)
+        with st.container(border=True):
+            if recorded_audio:
+                if st.button("Transcribe & Ask", type="primary", use_container_width=True):
+                    audio_bytes = recorded_audio.read()
+                    with st.spinner("Analyzing speech..."):
+                        voice_text = transcribe_audio_bytes(audio_bytes)
+                        if voice_text and not voice_text.startswith("[Error"):
+                            get_avatar_advice(voice_text, context)
+                        elif not voice_text:
+                            st.warning("No speech detected. Please speak clearly into the microphone.")
+                        else:
+                            st.error(f"Transcription error: {voice_text}")
             
-            if st.session_state.get("last_processed_audio") != audio_id:
-                st.session_state["last_processed_audio"] = audio_id
-                
-                # Vocal signals detection requirement
-                stress, energy = get_approx_vocal_signals(hub_audio_bytes)
-                st.markdown(f"""
-                <div style="background: #fdf2f8; padding: 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid #fbcfe8; margin-bottom: 10px;">
-                    <b>Vocal signals (approximate):</b> Stress: {stress} | Energy: {energy}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                with st.spinner("Processing voice input..."):
-                    voice_text = transcribe_audio_bytes(hub_audio_bytes)
-                    if voice_text and not voice_text.startswith("[Error"):
-                        get_avatar_advice(voice_text, context)
-        
-        if not st.session_state["chat_history"]:
-            st.info("Greetings. I am your AI assistant. I can help summarize your logs or prepare you for your next doctor's visit.")
-        
-        for msg in st.session_state["chat_history"]:
-            with st.chat_message(msg["role"]):
-                st.write(msg["content"])
-
-        user_input = st.chat_input("Ask about your health trends...")
-        
-        if user_input:
-            get_avatar_advice(user_input, context)
+            # 1) Transcript Section
+            if st.session_state.get("last_transcript"):
+                st.markdown("### 📝 recognized Transcript")
+                st.info(st.session_state["last_transcript"])
             
-        # Audio Playback
-        if "last_audio" in st.session_state and st.session_state["last_audio"]:
-            st.audio(st.session_state["last_audio"], format="audio/mp3", autoplay=True)
-            if st.session_state.get("new_audio_flag"):
-                st.session_state["avatar_talking"] = True
-                avatar_hero_placeholder.markdown(get_avatar_html(True, "EXPLAINING"), unsafe_allow_html=True)
-                last_msg = st.session_state["chat_history"][-1]["content"] if st.session_state["chat_history"] else ""
-                sleep_duration = max(2, len(last_msg) * 0.05)
-                time.sleep(sleep_duration)
-                st.session_state["avatar_talking"] = False
-                st.session_state["new_audio_flag"] = False
-                st.rerun()
+            # 2) Assistant Reply Section
+            if st.session_state.get("last_ai_reply"):
+                st.markdown("### 🤖 Assistant Response")
+                st.success(st.session_state["last_ai_reply"])
+                
+            st.divider()
+            
+            # 3) Full Chat History
+            st.markdown("### 💬 Persistent Chat History")
+            if not st.session_state["messages"]:
+                st.info("Greetings. I am your AI assistant. I can help summarize your logs or prepare you for your next doctor's visit.")
+            else:
+                for msg in st.session_state["messages"]:
+                    with st.chat_message(msg["role"]):
+                        st.write(msg["content"])
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            user_input = st.chat_input("Ask about your health trends...")
+            if user_input:
+                get_avatar_advice(user_input, context)
+                
+            # Audio Playback & Animation
+            if "last_audio" in st.session_state and st.session_state["last_audio"]:
+                st.audio(st.session_state["last_audio"], format="audio/mp3", autoplay=True)
+                if st.session_state.get("new_audio_flag"):
+                    st.session_state["avatar_talking"] = True
+                    avatar_hero_placeholder.markdown(get_avatar_html(True, "EXPLAINING"), unsafe_allow_html=True)
+                    last_msg = st.session_state["messages"][-1]["content"] if st.session_state["messages"] else ""
+                    sleep_duration = max(2, len(last_msg) * 0.05)
+                    time.sleep(sleep_duration)
+                    st.session_state["avatar_talking"] = False
+                    st.session_state["new_audio_flag"] = False
+                    st.rerun()
         
     st.divider()
     with st.expander("Clinical Preparation Tools"):
@@ -2053,11 +2065,7 @@ elif current_page == "Daily Check-In":
         
     c1, c2, c3 = st.columns([1,1,1])
     with c1:
-        audio_b64 = render_auto_mic(key="checkin_mic")
-        checkin_audio_bytes = None
-        if audio_b64:
-            import base64
-            checkin_audio_bytes = base64.b64decode(audio_b64)
+        checkin_audio = st.audio_input("Voice Log", key="checkin_audio_input")
     with c2:
         confirm_phi = st.checkbox("Confirm NO PHI", value=False)
     with c3:
@@ -2065,14 +2073,19 @@ elif current_page == "Daily Check-In":
             st.session_state["transcribed_text"] = ""
             st.rerun()
 
-    if checkin_audio_bytes:
-        if st.session_state.get("last_audio_id") != hash(checkin_audio_bytes):
+    if checkin_audio:
+        if st.button("Transcribe Voice Log", use_container_width=True):
+            audio_bytes = checkin_audio.read()
             with st.spinner("Transcribing..."):
-                transcription = transcribe_audio_bytes(checkin_audio_bytes)
-                if transcription:
+                transcription = transcribe_audio_bytes(audio_bytes)
+                if transcription and not transcription.startswith("[Error"):
                     st.session_state["transcribed_text"] = (st.session_state["transcribed_text"] + " " + transcription).strip()
-                st.session_state["last_audio_id"] = hash(checkin_audio_bytes)
-                st.rerun()
+                    st.session_state["last_transcript"] = transcription
+                    st.rerun()
+                elif not transcription:
+                    st.warning("No speech detected.")
+                else:
+                    st.error(transcription)
 
     if st.button("Submit Check-In", type="primary", use_container_width=True, disabled=not confirm_phi):
         if input_text.strip():
@@ -2176,6 +2189,7 @@ elif current_page == "Reports":
     render_reports_page()
 elif current_page == "Find Care":
     render_find_care()
+    st.markdown('</div>', unsafe_allow_html=True)
 elif current_page == "Settings":
     st.markdown('<div class="section-header">Security & Account Settings</div>', unsafe_allow_html=True)
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -2189,4 +2203,3 @@ elif current_page == "Settings":
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True) # End main-container
-
