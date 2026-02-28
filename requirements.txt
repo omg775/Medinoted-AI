@@ -12,3 +12,5 @@ spacy
 azure-cognitiveservices-speech
 pydub
 PyPDF2
+SpeechRecognition
+openai-whisper

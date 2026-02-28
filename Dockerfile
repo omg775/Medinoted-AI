@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip
 # Install the Python dependencies
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
-# Install the a specific scispacy model used in app.py
+# Install the a specific scispacy model used in app_new.py
 RUN pip install --no-cache-dir https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_sm-0.5.4.tar.gz
 
 # Copy the rest of the application code
@@ -29,5 +29,5 @@ COPY . .
 # Expose the default Streamlit port
 EXPOSE 8000
 
-# Command to run the Streamlit app
-CMD ["python", "-m", "streamlit", "run", "app.py", "--server.port", "8000", "--server.address", "0.0.0.0"]
+# Command to run the Streamlit app (use app_new.py)
+CMD ["python", "-m", "streamlit", "run", "app_new.py", "--server.port", "8000", "--server.address", "0.0.0.0"]
