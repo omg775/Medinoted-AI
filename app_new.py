@@ -11,14 +11,18 @@ import bcrypt
 import streamlit as st
 import os
 import json
-import re
-import io
+import base64
+import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Union, Set
+from typing import List, Dict
+import pandas as pd
+import regex as re
+import markdown
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 import pydeck as pdk
+import folium
+from streamlit_folium import st_folium
 import requests
 from scipy.io import wavfile
 
@@ -255,21 +259,24 @@ st.markdown("""
         background: var(--secondary-background-color); 
         backdrop-filter: blur(32px) saturate(200%);
         -webkit-backdrop-filter: blur(32px) saturate(200%);
-        padding: clamp(1.5rem, 5vw, 3.5rem); 
-        border-radius: 4px; 
-        box-shadow: 0 12px 40px rgba(0,0,0,0.06); 
-        margin-bottom: clamp(1.5rem, 4vw, 2.5rem); 
+        padding: clamp(1.25rem, 3vw, 2rem); 
+        border-radius: 12px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+        margin-bottom: clamp(1rem, 2vw, 1.5rem); 
         border: 1px solid rgba(128, 128, 128, 0.15); 
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
 
     [data-theme="light"] .card { 
         background: var(--ms-pure-white); 
         border: 1px solid var(--ms-neutral-tertiary);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     }
-
-    [data-testid="stVerticalBlock"] > div:nth-child(1) .card { border-top: 6px solid var(--brand-primary); }
-    [data-testid="stVerticalBlock"] > div:nth-child(2) .card { border-top: 6px solid var(--brand-secondary); }
 
     .privacy-banner { 
         background: rgba(255, 185, 0, 0.08); 
@@ -296,50 +303,76 @@ st.markdown("""
     }
     
     [data-theme="light"] .section-header { color: var(--ms-neutral-primary); }
-    
-    /* Clinical Dashboard Styles */
-    .stContainer {
-        border-radius: 12px !important;
-        background-color: white !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
-        border: 1px solid #e2e8f0 !important;
-        padding: 1rem !important;
-        margin-bottom: 1rem !important;
-    }
 
-    .kpi-tile-clinical {
-        padding: 0.75rem;
-        text-align: center;
+    /* Color Logic */
+    .text-blue { color: #2563EB !important; }
+    .text-green { color: #16A34A !important; }
+    .text-orange { color: #F59E0B !important; }
+    .text-purple { color: #8B5CF6 !important; }
+    
+    .bg-blue-light { background-color: #EFF6FF !important; }
+    .bg-green-light { background-color: #F0FDF4 !important; }
+    .bg-orange-light { background-color: #FFFBEB !important; }
+    .bg-purple-light { background-color: #F5F3FF !important; }
+    
+    .border-blue { border-left: 4px solid #2563EB !important; }
+    .border-green { border-left: 4px solid #16A34A !important; }
+    .border-orange { border-left: 4px solid #F59E0B !important; }
+    .border-purple { border-left: 4px solid #8B5CF6 !important; }
+
+    .metric-card {
+        padding: 1rem;
+        border-radius: 12px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .kpi-value-clinical {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #1e293b;
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
     }
-    .kpi-label-clinical {
-        font-size: 0.7rem;
+    
+    .metric-title {
+        font-size: 0.75rem;
         color: #64748b;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin-top: 0.25rem;
+        margin: 0;
     }
-    .kpi-micro-clinical {
-        font-size: 0.6rem;
-        color: #94a3b8;
+    
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        line-height: 1.2;
+    }
+    
+    .metric-subtitle {
+        font-size: 0.75rem;
+        margin: 0;
+        font-weight: 500;
     }
 
-    .accent-blue { border-left: 4px solid #3b82f6 !important; }
-    .accent-green { border-left: 4px solid #10b981 !important; }
-    .accent-orange { border-left: 4px solid #f59e0b !important; }
-    .accent-purple { border-left: 4px solid #8b5cf6 !important; }
+    .accent-blue { border-left: 4px solid #2563EB !important; }
+    .accent-green { border-left: 4px solid #16A34A !important; }
+    .accent-orange { border-left: 4px solid #F59E0B !important; }
+    .accent-purple { border-left: 4px solid #8B5CF6 !important; }
 
     .insight-card-clinical {
         background: #f8fafc !important;
-        border-left: 4px solid #3b82f6 !important;
+        border-left: 4px solid #8B5CF6 !important; /* purple for AI */
         padding: 1rem !important;
         border-radius: 8px !important;
     }
+
     
     .orb-container {
         display: flex;
@@ -472,6 +505,32 @@ st.markdown("""
 st.markdown(load_avatar_css(), unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
+# Reusable UI Components
+# -----------------------------------------------------------------------------
+def create_dashboard_card(title, value, subtitle, color="blue"):
+    """
+    Creates a metric card using HTML/CSS.
+    Color options: blue, green, orange, purple.
+    """
+    color_map = {
+        "blue": ("text-blue", "bg-blue-light", "border-blue"),
+        "green": ("text-green", "bg-green-light", "border-green"),
+        "orange": ("text-orange", "bg-orange-light", "border-orange"),
+        "purple": ("text-purple", "bg-purple-light", "border-purple")
+    }
+    t_color, bg_color, border = color_map.get(color, color_map["blue"])
+    
+    html = f"""
+    <div class="metric-card {border}">
+        <p class="metric-title">{title}</p>
+        <p class="metric-value">{value}</p>
+        <p class="metric-subtitle {t_color} {bg_color}" style="display:inline-block; padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px;">{subtitle}</p>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
 # State Initialization
 # -----------------------------------------------------------------------------
 if "transcribed_text" not in st.session_state:
@@ -505,11 +564,14 @@ if "habits" not in st.session_state:
 if "health_twin_summary" not in st.session_state:
     st.session_state["health_twin_summary"] = "No profile generated yet."
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Dashboard"
+    st.session_state["current_page"] = "AI Doctor"
 if "show_checkin_results" not in st.session_state:
     st.session_state["show_checkin_results"] = False
 if "last_checkin_result" not in st.session_state:
     st.session_state["last_checkin_result"] = None
+if "active_session_id" not in st.session_state:
+    import uuid
+    st.session_state["active_session_id"] = str(uuid.uuid4())
 
 def get_mood_label(sentiment_score):
     """Maps sentiment score to a professional mood scale."""
@@ -532,14 +594,16 @@ def get_approx_vocal_signals(audio_bytes):
 def render_empty_state(message, icon="ℹ️", cta=None):
     """Render a professional, centered empty-state message with an optional CTA."""
     st.markdown(f"""
-    <div style="text-align: center; padding: 2.5rem; background: rgba(58, 134, 255, 0.03); border-radius: 8px; border: 1px dashed #cbd5e1; margin: 1rem 0;">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem;">{icon}</div>
-        <div style="color: #64748b; font-weight: 500; font-size: 0.95rem;">{message}</div>
+    <div style="text-align: center; padding: 3rem 1.5rem; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1; margin: 1.5rem 0;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">{icon}</div>
+        <div style="color: #475569; font-weight: 500; font-size: 1rem;">{message}</div>
     </div>
     """, unsafe_allow_html=True)
     if cta:
-        if st.button(cta["label"], key=f"cta_{message[:10]}", use_container_width=True):
-            cta["action"]()
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button(cta["label"], key=f"cta_{message[:10]}", use_container_width=True, type="primary"):
+                cta["action"]()
 
 
 # -----------------------------------------------------------------------------
@@ -573,7 +637,7 @@ def render_auto_mic(key="auto_mic"):
 
     component_html = f"""
     <div id="mic-container" style="display: flex; align-items: center; justify-content: center; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.3s ease; height: 60px;">
-        <div id="mic-icon" style="font-size: 1.2rem; margin-right: 10px;">🎙️</div>
+        <div id="mic-icon" style="font-size: 1.2rem; margin-right: 10px;">️</div>
         <div id="status-text" style="font-weight: 600; color: #1e293b; font-family: sans-serif; font-size: 0.9rem;">Click to Speak</div>
     </div>
 
@@ -613,7 +677,7 @@ def render_auto_mic(key="auto_mic"):
                     }};
                     reader.readAsDataURL(blob);
                     
-                    icon.innerText = '✅';
+                    icon.innerText = '';
                     status.innerText = 'Done';
                     stream.getTracks().forEach(track => track.stop());
                 }};
@@ -626,7 +690,7 @@ def render_auto_mic(key="auto_mic"):
                 dataArray = new Float32Array(analyzer.frequencyBinCount);
 
                 mediaRecorder.start();
-                icon.innerText = '🔴';
+                icon.innerText = '';
                 status.innerText = 'Listening...';
                 container.style.background = '#fef2f2';
                 container.style.borderColor = '#ef4444';
@@ -634,7 +698,7 @@ def render_auto_mic(key="auto_mic"):
                 checkSilence();
             }} catch (err) {{
                 status.innerText = 'Mic Error';
-                icon.innerText = '❌';
+                icon.innerText = '';
             }}
         }}
 
@@ -687,10 +751,44 @@ def save_note(note):
     if not st.session_state.get("is_authenticated"):
         return
     notes = load_notes()
-    notes.append(note)
+    
+    # If the note has an ID (like a chat session), update it if it exists
+    updated = False
+    if "id" in note:
+        for i, existing in enumerate(notes):
+            if existing.get("id") == note["id"]:
+                notes[i] = note
+                updated = True
+                break
+                
+    if not updated:
+        notes.append(note)
+        
     path = user_notes_path(st.session_state["username"])
     with open(path, "w") as f:
         json.dump(notes, f, indent=2)
+
+def save_current_chat_session():
+    """Saves the current `st.session_state["messages"]` to the notes database."""
+    if not st.session_state.get("is_authenticated") or not st.session_state.get("messages"):
+        return
+        
+    # Generate a brief title from the first user message
+    title = "New Conversation"
+    for msg in st.session_state["messages"]:
+        if msg["role"] == "user":
+            title = msg["content"][:30] + ("..." if len(msg["content"]) > 30 else "")
+            break
+            
+    session_note = {
+        "id": st.session_state["active_session_id"],
+        "timestamp": datetime.now().isoformat(),
+        "date": datetime.today().strftime("%Y-%m-%d"),
+        "mode": "chat_session",
+        "title": title,
+        "messages": st.session_state["messages"]
+    }
+    save_note(session_note)
 
 def clear_local_history():
     if not st.session_state.get("is_authenticated"):
@@ -946,7 +1044,7 @@ def generate_risk_alerts(trends):
             escalated = True
             
     if escalated:
-        alerts.append("🚨 **SMART ESCALATION**: Persistent symptoms detected. Please use the Care Circle feature to generate a report and consult a healthcare professional.")
+        alerts.append(" **SMART ESCALATION**: Persistent symptoms detected. Please use the Care Circle feature to generate a report and consult a healthcare professional.")
         
     return alerts
 
@@ -1090,7 +1188,7 @@ Context:
 {context if context else "No recent logs available."}
 """
     messages = [{"role": "system", "content": system_prompt}]
-    for msg in history[-5:]: # last 5 to keep context short
+    for msg in history: # Pass full conversation history
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": user_message})
     
@@ -1267,9 +1365,9 @@ def generate_pdf_report(username, notes):
 def render_privacy_badges():
     st.markdown("""
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <span style="background-color: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #bbf7d0;">✓ Privacy Shield Enabled</span>
-            <span style="background-color: #f1f5f9; color: #475569; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #e2e8f0;">⬚ Synthetic Data Mode</span>
-            <span style="background-color: #fef2f2; color: #991b1b; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #fecaca;">🛡 No PHI Stored</span>
+            <span style="background-color: #f1f5f9; color: #334155; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #cbd5e1;">Privacy Shield Enabled</span>
+            <span style="background-color: #f1f5f9; color: #334155; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #cbd5e1;">Synthetic Data Mode</span>
+            <span style="background-color: #fef2f2; color: #dc2626; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid #fecaca;">No PHI Stored</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1309,7 +1407,7 @@ def get_avatar_advice(user_message, context):
                 
                 # Generate reward response
                 insight = generate_insight(user_message)
-                reply = f"Saved ✅ | Streak: 🔥 {streak} day(s) \n\n{insight}\n\n*Next unlock: Level {level + 1} in {next_unlock} more log(s).*"
+                reply = f"Saved  | Streak:  {streak} day(s) \n\n{insight}\n\n*Next unlock: Level {level + 1} in {next_unlock} more log(s).*"
             else:
                 reply = "Check-in complete (Privacy Mode Active - not saved)."
             
@@ -1346,6 +1444,7 @@ def get_avatar_advice(user_message, context):
         # Store Assistant Reply persistently
         st.session_state["messages"].append({"role": "assistant", "content": reply})
         st.session_state["last_ai_reply"] = reply
+        save_current_chat_session()
 
         # Set Audio & Animation Flags
         if audio_bytes:
@@ -1483,8 +1582,8 @@ if not st.session_state["is_authenticated"]:
         with left_col:
             # Logo top-left
             logo_top_html = f"""
-            <div style="padding: 1.5rem 1.5rem 0; z-index:3; position:relative;">
-                <img src="{logo_src}" style="height:200px; object-fit:contain;" />
+            <div style="padding: 0.5rem 1.5rem 0; z-index:3; position:relative;">
+                <img src="{logo_src}" style="height:280px; object-fit:contain;" />
             </div>
             """ if logo_src else ""
 
@@ -1510,19 +1609,19 @@ if not st.session_state["is_authenticated"]:
         with right_col:
 
             st.markdown(
-                '<h2 style="text-align:center; font-size:2.0rem; font-weight:800; margin:0 0 0.3rem;'
+                '<h2 style="text-align:center; font-size:2.8rem; font-weight:800; margin:0 0 0.3rem;'
                 'background: linear-gradient(90deg, #2563EB 0%, #16A34A 100%);'
                 '-webkit-background-clip: text; -webkit-text-fill-color: transparent;'
                 'background-clip: text;">Welcome to Medinoted.com</h2>'
-                '<p style="text-align:center; color:#2EC4B6; font-size:0.95rem; margin:0 0 2rem; font-weight:600;">Sign in to your account</p>',
+                '<p style="text-align:center; color:#2EC4B6; font-size:1.1rem; margin:0 0 2rem; font-weight:600;">Sign in to your account</p>',
                 unsafe_allow_html=True
             )
 
-            mode = st.radio("", ["Login", "Register"], horizontal=True, label_visibility="collapsed")
-            mode = "Login" if "Login" in mode else "Register"
+            mode = st.radio("Login Mode", ["Login", "Register"], key="login_radio_mode", horizontal=True, label_visibility="collapsed")
+            mode = "Login" if mode == "Login" else "Register"
 
             st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-            username_input = st.text_input("Username", placeholder="Enter your username")
+            username_input = st.text_input("Username or Email", placeholder="Enter your username or email")
             password_input = st.text_input("Password", type="password", placeholder="Enter your password")
 
             if mode == "Register":
@@ -1548,7 +1647,7 @@ if not st.session_state["is_authenticated"]:
                             }
                             save_users_db(db)
                             user_data_dir(safe_name)
-                            st.success("✅ Account created! Please login.")
+                            st.success(" Account created! Please login.")
             else:
                 if st.button("Login →", type="primary", use_container_width=True):
                     if not username_input or not password_input:
@@ -1571,7 +1670,7 @@ if not st.session_state["is_authenticated"]:
 
             st.markdown(
                 '<p style="font-size:0.75rem; color:#b0b8c1; text-align:center; margin-top:1.5rem;">'
-                '🔒 Demo uses synthetic/anonymized data. Not a diagnostic tool.</p>',
+                ' Demo uses synthetic/anonymized data. Not a diagnostic tool.</p>',
                 unsafe_allow_html=True
             )
 
@@ -1604,18 +1703,23 @@ def check_azure_connections():
 
 def render_sidebar():
     with st.sidebar:
-        st.markdown(f"### 👋 Welcome, {st.session_state['username']}")
+        username_display = st.session_state['username']
+        if "@" not in username_display:
+            username_display += "@gmail.com"
+        st.markdown(f"###  Welcome,\n##### {username_display}")
+        st.markdown("---")
         
-        pages = ["Dashboard", "Daily Check-In", "AI Doctor", "Insights", "Reports", "Find Care", "Settings"]
+        pages = ["AI Doctor", "Dashboard", "Daily Check-In", "Find Care", "Settings"]
         
-        # Ensure radio stays in sync with programmatically set pages
-        current_idx = 0
-        if "current_page" in st.session_state and st.session_state["current_page"] in pages:
-            current_idx = pages.index(st.session_state["current_page"])
-            
-        choice = st.radio("Navigation", pages, index=current_idx, label_visibility="collapsed")
-        st.session_state["current_page"] = choice
+        current_page = st.session_state.get("current_page", "AI Doctor")
         
+        for page in pages:
+            # We use primary type for the active page, secondary for others
+            btn_type = "primary" if current_page == page else "secondary"
+            if st.button(page, key=f"nav_btn_{page}", use_container_width=True, type=btn_type):
+                st.session_state["current_page"] = page
+                st.rerun()
+                
         st.divider()
         if st.button("Logout", use_container_width=True):
             st.session_state["is_authenticated"] = False
@@ -1625,23 +1729,59 @@ def render_sidebar():
             st.rerun()
             
         st.divider()
+        all_notes = load_notes()
+        
+        # --- Chat Sessions Sidebar Section ---
+        if current_page == "AI Doctor":
+            st.markdown("###  Your Conversations")
+            if st.button(" New Chat", use_container_width=True, type="primary"):
+                import uuid
+                st.session_state["active_session_id"] = str(uuid.uuid4())
+                st.session_state["messages"] = []
+                st.session_state["last_transcript"] = ""
+                st.session_state["last_ai_reply"] = ""
+                st.rerun()
+                
+            chat_sessions = [n for n in all_notes if n.get("mode") == "chat_session"]
+            # Sort sessions by timestamp descending
+            chat_sessions = sorted(chat_sessions, key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            if not chat_sessions:
+                st.caption("No past conversations.")
+            else:
+                st.markdown('<div style="max-height: 300px; overflow-y: auto;">', unsafe_allow_html=True)
+                for session in chat_sessions:
+                    safe_title = session.get("title", "Conversation")[:28]
+                    btn_type = "primary" if session.get("id") == st.session_state.get("active_session_id") else "secondary"
+                    # We use a distinct key for each session button
+                    if st.button(f"️ {safe_title}", key=f"session_{session.get('id')}", use_container_width=True, type=btn_type):
+                        st.session_state["active_session_id"] = session.get("id")
+                        st.session_state["messages"] = session.get("messages", [])
+                        st.session_state["last_transcript"] = ""
+                        st.session_state["last_ai_reply"] = ""
+                        st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.divider()
+        # -----------------------------------
+        
         st.markdown("### Secure Status")
         missing_keys = check_azure_connections()
         if missing_keys:
-            st.error("⚠️ AI Backend Limited")
+            st.error("️ AI Backend Limited")
         else:
-            st.success("✅ AI Engine Active")
+            st.success(" AI Engine Active")
             
         st.divider()
         all_notes = load_notes()
         streak, level, _ = update_streak(all_notes)
         st.markdown(f"**Health Level:** {level}")
-        st.markdown(f"**Active Streak:** 🔥 {streak} Day(s)")
+        st.markdown(f"**Active Streak:**  {streak} Day(s)")
 
-def render_dashboard():
-    st.markdown('<div class="section-header" style="margin-bottom: 1.5rem; border-left-color: #3b82f6;">Patient Portal Dashboard</div>', unsafe_allow_html=True)
+def render_overview_tab():
+    # 3-Zone Layout Implementation (Sidebar is Zone 1 natively, col_main is Zone 2, col_context is Zone 3)
+    col_main, col_context = st.columns([2.8, 1], gap="large")
     
-    # 1. Patient Status Panel (Top KPI Cards)
     all_notes = load_notes()
     diary_notes = [n for n in all_notes if n.get("mode") == "diary"]
     trends = analyze_trends(diary_notes)
@@ -1651,6 +1791,7 @@ def render_dashboard():
     
     last_log_val = "None today"
     last_log_micro = "Daily log status"
+    last_dt = None
     if all_notes:
         last_dt = datetime.fromisoformat(all_notes[-1].get("timestamp", datetime.now().isoformat()))
         if last_dt.date() == datetime.today().date():
@@ -1659,116 +1800,161 @@ def render_dashboard():
         else:
             last_log_val = last_dt.strftime("%b %d")
             last_log_micro = f"Last log {last_dt.strftime('%H:%M')}"
+            
+    with col_main:
+        st.markdown('<div class="section-header" style="margin-bottom: 1.5rem; border-left-color: #3b82f6;">Patient Portal Dashboard</div>', unsafe_allow_html=True)
         
-    s1, s2, s3, s4 = st.columns(4)
-    with s1: 
-        with st.container(border=True):
-            st.markdown(f'<div class="kpi-tile-clinical accent-blue"><div class="kpi-value-clinical">{mood_label}</div><div class="kpi-label-clinical">Today\'s Mood</div><div class="kpi-micro-clinical">Sentiment analysis</div></div>', unsafe_allow_html=True)
-    with s2:
-        with st.container(border=True):
-            st.markdown(f'<div class="kpi-tile-clinical accent-green"><div class="kpi-value-clinical">{last_log_val}</div><div class="kpi-label-clinical">Last Check-In</div><div class="kpi-micro-clinical">{last_log_micro}</div></div>', unsafe_allow_html=True)
-    with s3: 
-        with st.container(border=True):
+        # 1. Health Summary Strip (4 cards) using our new unified component
+        s1, s2, s3, s4 = st.columns(4)
+        with s1: create_dashboard_card("Today's Mood", mood_label, "Sentiment", "blue")
+        with s2: create_dashboard_card("Last Check-In", last_log_val, last_log_micro, "blue")
+        with s3:
             progress = (len(all_notes) % 5) * 20
-            st.markdown(f'<div class="kpi-tile-clinical accent-orange"><div class="kpi-value-clinical">{progress}%</div><div class="kpi-label-clinical">Monthly report progress</div><div class="kpi-micro-clinical">Progress to summary</div></div>', unsafe_allow_html=True)
-    with s4:
-        with st.container(border=True):
-            st.markdown(f'<div class="kpi-tile-clinical accent-purple"><div class="kpi-value-clinical">Live</div><div class="kpi-label-clinical">Voice Assistant</div><div class="kpi-micro-clinical">System ready</div></div>', unsafe_allow_html=True)
-    
-    # 2. Primary Action
-    st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
-    if st.button("START DAILY CHECK-IN", type="primary", use_container_width=True):
-        st.session_state["current_page"] = "Daily Check-In"
-        st.rerun()
-    st.markdown('<p style="text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Record your clinical symptoms, mood, or a voice note.</p>', unsafe_allow_html=True)
-    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
-    
-    # 3. Quick Access Cards
-    st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; color: #334155;">Quick Access</h3>', unsafe_allow_html=True)
-    q1, q2, q3 = st.columns(3)
-    
-    items = [
-        (q1, "🤖", "AI Doctor", "Consult with your virtual assistant.", "AI Doctor", "qa_dr_2"),
-        (q2, "📋", "Health Records", "View your medical timeline.", "Reports", "qa_rec_2"),
-        (q3, "🗺️", "Find Care", "Locate nearby medical facilities.", "Find Care", "qa_care_2")
-    ]
-    
-    for col, icon, title, desc, page, key in items:
-        with col:
-            with st.container(border=True):
-                st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 0.5rem;">
-                    <div style="font-size: 2rem; margin-bottom: 0.25rem;">{icon}</div>
-                    <div style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">{title}</div>
-                    <p style="font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 1rem 0; min-height: 2.5rem;">{desc}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"Open {title}", key=key, use_container_width=True):
-                    st.session_state["current_page"] = page
-                    st.rerun()
+            create_dashboard_card("Report Build", f"{progress}%", "To next summary", "blue")
+        with s4: create_dashboard_card("Voice System", "Live", "AI Ready", "blue")
         
-    # 4. Today Insight (Conditional)
-    if diary_notes:
-        last_entry = diary_notes[-1].get("raw_text_redacted", "")
-        if last_entry:
-            insight_text = generate_insight(last_entry)
-            st.markdown(f"""
-            <div class="insight-card-clinical">
-                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color: #1e3a8a;">💡 Today's Insight</h3>
-                <div style="font-size: 0.9rem; color: #1e40af; line-height: 1.4;">{clean_html(insight_text)}</div>
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 2. Primary Action Area - Daily Check-In
+        with st.container():
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #EFF6FF, #F0FDF4); padding: 1.5rem; border-radius: 12px; border: 1px solid #bfdbfe; margin-bottom: 1rem;">
+                <h3 style="margin: 0 0 0.5rem 0; color: #1e3a8a; font-size: 1.25rem;"> Daily Health Check-In</h3>
+                <p style="color: #475569; margin: 0 0 1rem 0; font-size: 0.9rem;">Record your clinical symptoms, mood, or a voice note for tracking.</p>
             </div>
             """, unsafe_allow_html=True)
-    else:
-        st.info("Log your status today to generate a clinical health insight.")
+            if st.button(" START SECURE CHECK-IN", type="primary", use_container_width=True):
+                st.session_state["current_page"] = "Daily Check-In"
+                st.rerun()
 
-    # 5. Recent Activity & Symptoms
-    if all_notes:
-        st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #334155;">Recent Activity</h3>', unsafe_allow_html=True)
-        col_act, col_symptom = st.columns([1.8, 1.2])
-        
-        with col_act:
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 3. Quick Access / Feature Cards
+        st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Quick Navigation</h3>', unsafe_allow_html=True)
+        q1, q2, q3 = st.columns(3)
+        with q1:
             with st.container(border=True):
-                for n in all_notes[-3:][::-1]:
-                    dt = n.get("date", "Unknown")
-                    raw_text = n.get("raw_text_redacted", "")
-                    clean_text = clean_html(raw_text)
-                    snippet = clean_text[:80] + "..." if len(clean_text) > 80 else clean_text
-                    mode_icon = "🏥" if n.get("mode") == "soap" else "📓"
+                st.markdown('<div style="font-size:2rem; text-align:center;"></div><div style="font-weight:bold; text-align:center; margin-bottom:0.5rem; color:#1e293b;">AI Doctor</div><div style="font-size:0.75rem; color:#64748b; text-align:center; min-height: 2.5rem;">Consult with your personalized assistant.</div>', unsafe_allow_html=True)
+                if st.button("Open Assistant", key="qa_dr_2", use_container_width=True):
+                    st.session_state["current_page"] = "AI Doctor"
+                    st.rerun()
+        with q2:
+            with st.container(border=True):
+                recent_update = last_log_val if all_notes else "No records"
+                st.markdown(f'<div style="font-size:2rem; text-align:center;"></div><div style="font-weight:bold; text-align:center; margin-bottom:0.5rem; color:#1e293b;">Health Records</div><div style="font-size:0.75rem; color:#64748b; text-align:center; min-height: 2.5rem;">Last update: {recent_update}</div>', unsafe_allow_html=True)
+                if st.button("View Records", key="qa_rec_2", use_container_width=True):
+                    st.session_state["current_page"] = "Reports"
+                    st.rerun()
+        with q3:
+            with st.container(border=True):
+                st.markdown('<div style="font-size:2rem; text-align:center;">️</div><div style="font-weight:bold; text-align:center; margin-bottom:0.5rem; color:#1e293b;">Find Care</div><div style="font-size:0.75rem; color:#64748b; text-align:center; min-height: 2.5rem;">Locate medical facilities.</div>', unsafe_allow_html=True)
+                if st.button("Open Map", key="qa_care_2", use_container_width=True):
+                    st.session_state["current_page"] = "Find Care"
+                    st.rerun()
+        
+        # 4. Today's Insight & Recent Activity
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Clinical Insights & Activity</h3>', unsafe_allow_html=True)
+        
+        ca1, ca2 = st.columns([1, 1])
+        with ca1:
+            if diary_notes:
+                last_entry = diary_notes[-1].get("raw_text_redacted", "")
+                if last_entry:
+                    insight_text = generate_insight(last_entry)
                     st.markdown(f"""
-                    <div style="margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
-                        <span style="font-weight: 600; color: #3b82f6; font-size: 0.8rem;">{dt} {mode_icon}</span><br/>
-                        <span style="font-size: 0.8rem; color: #475569; line-height: 1.4;">{snippet}</span>
+                    <div class="insight-card-clinical">
+                        <h4 style="margin:0 0 0.5rem 0; color:#4c1d95; font-size:0.9rem;"> Dynamic Recommendation</h4>
+                        <div style="font-size:0.85rem; color:#334155;">{clean_html(insight_text)}</div>
                     </div>
                     """, unsafe_allow_html=True)
-        
-        with col_symptom:
-            top_symptoms = trends.get("top_symptoms", [])
+            else:
+                st.info("Log your status today to generate a clinical health insight.")
+                
+        with ca2:
             with st.container(border=True):
-                if top_symptoms:
-                    symptom_name, count = top_symptoms[0]
-                    st.markdown(f"""
-                    <div style="text-align: center; padding: 0.5rem 0;">
-                        <h4 style="margin: 0; color: #64748b; font-size: 0.85rem;">Primary Symptom</h4>
-                        <div style="font-size: 1.75rem; font-weight: 700; color: #d97706; margin: 0.5rem 0;">{symptom_name.title()}</div>
-                        <div style="font-size: 0.75rem; color: #94a3b8;">Reported <b>{count} times</b> recently</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                st.markdown('<div style="font-weight:600; font-size:0.9rem; margin-bottom:0.5rem; color:#1e293b;">Recent Logs</div>', unsafe_allow_html=True)
+                if all_notes:
+                    for n in all_notes[-3:][::-1]:
+                        dt = n.get("date", "Unknown")
+                        raw_text = n.get("raw_text_redacted", "")
+                        clean_text = clean_html(raw_text)
+                        snippet = clean_text[:60] + "..." if len(clean_text) > 60 else clean_text
+                        mode_icon = "" if n.get("mode") == "soap" else ""
+                        st.markdown(f"""
+                        <div style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #f1f5f9;">
+                            <span style="font-weight: 600; color: #3b82f6; font-size: 0.75rem;">{dt} {mode_icon}</span><br/>
+                            <span style="font-size: 0.8rem; color: #475569;">{snippet}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.markdown('<div style="text-align: center; color: #94a3b8; padding: 1rem 0; font-size: 0.85rem;">No symptoms tracked.</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="font-size: 0.8rem; color: #94a3b8;">No recent activity found.</div>', unsafe_allow_html=True)
+
+    # Zone 3: Right Context Panel
+    with col_context:
+        st.markdown('<div style="padding: 1.25rem; background-color: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.02); height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 1rem; margin-top: 0; text-transform: uppercase; letter-spacing: 0.05em;">Context Center</h3>', unsafe_allow_html=True)
+        
+        # Reminder
+        if last_dt and last_dt.date() < datetime.today().date():
+            st.warning("️ You haven't logged today.")
+        elif not last_dt:
+            st.info(" Welcome! Start by logging.")
+        else:
+            st.success(" Logged today.")
+            
+        st.markdown("<hr style='margin: 1.25rem 0; background-color: #e2e8f0; height: 1px; border: none;' />", unsafe_allow_html=True)
+        
+        # Primary Symptom
+        top_symptoms = trends.get("top_symptoms", [])
+        if top_symptoms:
+            symptom_name, count = top_symptoms[0]
+            st.markdown(f"""
+            <div style="margin-bottom: 1.25rem;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Primary Symptom</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: #d97706; margin-top: 0.25rem;">{symptom_name.title()}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Reported {count} times recently</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Primary Symptom</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">None tracked</div>', unsafe_allow_html=True)
+            
+        st.markdown("<hr style='margin: 1.25rem 0; background-color: #e2e8f0; height: 1px; border: none;' />", unsafe_allow_html=True)
+        
+        # Assistant Readiness
+        st.markdown("""
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">AI Assistant</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); animation: pulse 2s infinite;"></div>
+                <span style="font-size: 0.85rem; color: #334155; font-weight: 600;">System Online</span>
+            </div>
+            <style>
+                @keyframes pulse {
+                    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+                    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
+            </style>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def render_find_care():
-    st.markdown('<div class="section-header">Find Care Nearby</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header" style="border-left-color: #8b5cf6;">Find Care Nearby</div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 2.5], gap="large")
     
     with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown("#### Search Filters")
+        st.markdown('<div class="card" style="padding: 1.5rem; border-top: 4px solid #3b82f6;">', unsafe_allow_html=True)
+        st.markdown('<h3 style="color: #1e3a8a; font-size: 1.2rem; margin-top: 0; margin-bottom: 1rem;">Location Search</h3>', unsafe_allow_html=True)
         location_input = st.text_input("City or Zip Code", placeholder="e.g. 90210")
         care_types = st.multiselect("Facility Type", ["hospital", "pharmacy", "clinic", "doctors"], default=["hospital", "pharmacy"])
         
+        st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
         # Geolocation trigger
-        if st.button("📍 Use My Current Location", use_container_width=True):
+        if st.button(" Use My Current Location", use_container_width=True):
             st.session_state["trigger_geo"] = True
             
         if st.session_state.get("trigger_geo"):
@@ -1780,7 +1966,8 @@ def render_find_care():
                     st.session_state["user_location"] = geo_data
                     st.session_state["trigger_geo"] = False
         
-        search_pressed = st.button("Search Medical Facilities", type="primary", use_container_width=True)
+        st.markdown("<div style='margin: 0.5rem 0;'></div>", unsafe_allow_html=True)
+        search_pressed = st.button(" Search Medical Facilities", type="primary", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -1797,80 +1984,155 @@ def render_find_care():
             # Fake/Simple geocoding for common inputs to keep it snappy
             if "90210" in location_input: lat, lon = 34.0736, -118.4004
             elif "seattle" in location_input.lower(): lat, lon = 47.6062, -122.3321
+            elif "london" in location_input.lower(): lat, lon = 51.5074, -0.1278
             
         if search_pressed or st.session_state.get("user_location"):
             with st.spinner("Querying real-time healthcare data..."):
                 facilities = query_nearby_care(lat, lon, categories=care_types)
                 
                 if facilities:
-                    # Prepare map data
-                    df = pd.DataFrame(facilities)
+                    with st.container(border=True):
+                        st.markdown('<div style="font-weight: 600; color: #475569; margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase;">Interactive Care Map</div>', unsafe_allow_html=True)
+                        
+                        # Build folium map
+                        m = folium.Map(location=[lat, lon], zoom_start=13, tiles="CartoDB positron")
+                        
+                        # Add user location marker
+                        folium.Marker(
+                            [lat, lon],
+                            popup="Your Location",
+                            tooltip="Your Location",
+                            icon=folium.Icon(color='blue', icon='user')
+                        ).add_to(m)
+
+                        for f in facilities:
+                            icon_color = "red" if f["type"] == "hospital" else "green" if f["type"] == "pharmacy" else "purple"
+                            icon_type = "plus" if f["type"] == "hospital" else "medkit" if f["type"] == "pharmacy" else "user-md"
+                            
+                            folium.Marker(
+                                [f["lat"], f["lon"]], 
+                                popup=f"<b>{f['name']}</b><br>{f['type']}",
+                                tooltip=f["name"],
+                                icon=folium.Icon(color=icon_color, icon=icon_type, prefix='fa')
+                            ).add_to(m)
+                            
+                        # Render folium map in Streamlit
+                        st_folium(m, width=700, height=450, returned_objects=[])
                     
-                    st.pydeck_chart(pdk.Deck(
-                        map_style='mapbox://styles/mapbox/light-v9',
-                        initial_view_state=pdk.ViewState(
-                            latitude=lat,
-                            longitude=lon,
-                            zoom=12,
-                            pitch=45,
-                        ),
-                        layers=[
-                            pdk.Layer(
-                                'ScatterplotLayer',
-                                data=df,
-                                get_position='[lon, lat]',
-                                get_color='[22, 163, 74, 160]',
-                                get_radius=200,
-                                pickable=True,
-                            ),
-                        ],
-                        tooltip={"text": "{name} ({type})"}
-                    ))
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown(f'<h3 style="color: #334155; font-size: 1.1rem; margin-top: 0; margin-bottom: 0.5rem;">Nearby Facilities ({len(facilities)} found)</h3>', unsafe_allow_html=True)
                     
-                    st.markdown(f"#### Results ({len(facilities)} found)")
+                    # Display list
                     for f in facilities[:5]: # Show top 5
+                        border_color = "#ef4444" if f["type"] == "hospital" else "#10b981" if f["type"] == "pharmacy" else "#8b5cf6"
                         st.markdown(f"""
-                        <div class="card" style="padding: 1rem; margin-bottom: 0.5rem; border-left: 4px solid #16A34A;">
-                            <b>{f['name']}</b><br/>
-                            <span style="font-size: 0.8rem; color: #666;">{f['type']} • {lat:.2f}, {lon:.2f}</span>
+                        <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid #e2e8f0; border-left: 4px solid {border_color}; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <div style="font-weight: bold; color: #1e293b; font-size: 1rem;">{f['name']}</div>
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">
+                                <span style="text-transform: capitalize; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; margin-right: 8px;">{f['type']}</span> 
+                                 {lat:.2f}, {lon:.2f}
+                            </div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    render_empty_state("No facilities found in this area. Try a different location or broader filters.", icon="📍")
+                    render_empty_state("No facilities found in this area. Try a different location or broader filters.", icon="")
         else:
-            render_empty_state("Enter a location or use GPS to see nearby healthcare facilities on the map.", icon="🗺️")
+            with st.container(border=True):
+                st.markdown("""
+                <div style="text-align: center; padding: 3rem 1rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">️</div>
+                    <h3 style="color: #334155; margin-bottom: 0.5rem;">Map Interface Ready</h3>
+                    <p style="color: #64748b; font-size: 0.9rem;">Enter a location or use your device GPS to discover healthcare providers near you.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+def render_insights_page():
+    st.markdown('<div class="section-header">Health Insights & Analysis</div>', unsafe_allow_html=True)
+    
+    all_notes = load_notes()
+    diary_notes = [n for n in all_notes if n.get("mode") == "diary"]
+    
+    if not diary_notes:
+        render_empty_state("Log your daily check-ins to unlock behavioral and health twin insights.", icon="", cta={"label": "Start Daily Check-In", "action": lambda: st.session_state.update({"current_page": "Daily Check-In"})})
+    else:
+        # Dashboard style analytics
+        trends = analyze_trends(diary_notes)
+        
+        i1, i2 = st.columns([1, 1])
+        with i1:
+            with st.container(border=True):
+                st.markdown("#### Sentiment Arc (Mood Trend)")
+                try:
+                    graph_notes = diary_notes[-14:]
+                    dates = [str(n.get("date", "Unknown")) for n in graph_notes]
+                    scores = [float(n.get("diary", {}).get("sentiment", 0.0)) for n in graph_notes]
+                    fig, ax = plt.subplots(figsize=(6, 3))
+                    ax.plot(dates, scores, marker='o', color='#3A86FF')
+                    ax.axhline(0, color='gray', linestyle='--')
+                    plt.xticks(rotation=45)
+                    st.pyplot(fig)
+                except: st.write("Graph generation pending more data.")
+                
+            with st.container(border=True):
+                st.markdown("#### Predicting Risk Intensity")
+                alerts = generate_risk_alerts(trends)
+                if alerts:
+                    for a in alerts: st.warning(a)
+                else: st.success("No high-risk trends detected.")
+
+        with i2:
+            with st.container(border=True):
+                st.markdown("#### AI Health Twin Profile")
+                if st.button("Regenerate Twin Profile"):
+                    st.session_state["health_twin_summary"] = generate_health_twin_summary(all_notes)
+                st.write(st.session_state.get("health_twin_summary", "Profile pending regeneration."))
+                
+            with st.container(border=True):
+                st.markdown("#### Micro-Habit Prescriptions")
+                if st.button("Generate Today's Habits"):
+                    st.session_state["habits"] = generate_micro_habits(all_notes)
+                if st.session_state.get("habits"):
+                    for hb in st.session_state["habits"]: st.checkbox(hb)
+
+def render_dashboard():
+    tab1, tab2, tab3 = st.tabs(["Overview", "Reports", "Insights"])
+    with tab1:
+        render_overview_tab()
+    with tab2:
+        render_reports_page()
+    with tab3:
+        render_insights_page()
 
 def render_reports_page():
     st.markdown('<div class="section-header">Health Reports & Records</div>', unsafe_allow_html=True)
     
     notes = load_notes()
     if not notes:
-        render_empty_state("No records found. Complete a daily check-in to start building your timeline.", icon="📋", cta={"label": "Record First Entry", "action": lambda: st.session_state.update({"current_page": "Daily Check-In"})})
+        render_empty_state("No records found. Complete a daily check-in to start building your timeline.", icon="", cta={"label": "Record First Entry", "action": lambda: st.session_state.update({"current_page": "Daily Check-In"})})
         return
         
     # Monthly Report Section
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### 📅 Monthly Health Summary")
-    st.write("Generate a professional overview of your health trends for your clinician.")
-    
-    if st.button("Generate Monthly Report PDF", type="primary"):
-        with st.spinner("Preparing clinical summary..."):
-            pdf_bytes = generate_pdf_report(st.session_state["username"], notes)
-            if pdf_bytes:
-                st.download_button(
-                    label="Download Report (PDF)",
-                    data=pdf_bytes,
-                    file_name=f"health_report_{datetime.today().strftime('%Y_%m')}.pdf",
-                    mime="application/pdf"
-                )
-            else:
-                st.error("Error generating PDF. Please ensure all dependencies are met.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown("###  Monthly Health Summary")
+        st.write("Generate a professional overview of your health trends for your clinician.")
+        
+        if st.button("Generate Monthly Report PDF", type="primary"):
+            with st.spinner("Preparing clinical summary..."):
+                pdf_bytes = generate_pdf_report(st.session_state["username"], notes)
+                if pdf_bytes:
+                    st.download_button(
+                        label="Download Report (PDF)",
+                        data=pdf_bytes,
+                        file_name=f"health_report_{datetime.today().strftime('%Y_%m')}.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.error("Error generating PDF. Please ensure all dependencies are met.")
     
     # Existing Records Timeline
     with st.expander("View Full Medical Timeline", expanded=True):
         for n in reversed(notes):
-            mode_icon = "🏥" if n.get("mode") == "soap" else "📓"
+            mode_icon = "" if n.get("mode") == "soap" else ""
             bg = "#f8fafc" if n.get("mode") == "soap" else "#ffffff"
             st.markdown(f"""
             <div style="background: {bg}; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
@@ -1891,7 +2153,7 @@ render_privacy_badges()
 
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-current_page = st.session_state.get("current_page", "Dashboard")
+current_page = st.session_state.get("current_page", "AI Doctor")
 
 if current_page == "Dashboard":
     render_dashboard()
@@ -1901,177 +2163,194 @@ elif current_page == "AI Doctor":
     st.markdown('<div class="section-header">AI Care Assistant</div>', unsafe_allow_html=True)
     st.caption("Professional AI Consultation — not medical advice or diagnosis.")
 
-    # Main Consultation Layout
-    col_doctor, col_interaction = st.columns([1, 1.2], gap="large")
+    # Main Consultation Layout - 2 columns
+    col_doctor, col_interaction = st.columns([1, 1.8], gap="large")
 
     with col_doctor:
-        st.markdown('<div style="margin-top: 2rem;">', unsafe_allow_html=True)
+        st.markdown('<div style="margin-top: 1rem;">', unsafe_allow_html=True)
         avatar_hero_placeholder = st.empty()
-        avatar_hero_placeholder.markdown(get_avatar_html(st.session_state["avatar_talking"], "STANDING BY"), unsafe_allow_html=True)
+        avatar_hero_placeholder.markdown(get_avatar_html(st.session_state.get("avatar_talking", False), "STANDING BY"), unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("""
-        <div style="text-align: center; margin-top: 1rem;">
-            <h2 style="color: var(--ms-blue); font-size: 1.8rem; margin-bottom: 0.1rem;">Health Assistant AI</h2>
-            <p style="color: var(--ms-neutral-secondary); font-weight: 500;">Virtual Physician Assistant</p>
-            <div style="font-size: 0.75rem; color: #ef4444; border: 1px solid #fee2e2; padding: 4px; border-radius: 4px; margin-top: 10px;">
-                ⚠️ SAFETY NOTICE: Not a substitute for professional medical advice.
+        <div style="text-align: center; margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <h2 style="color: #1e3a8a; font-size: 1.4rem; margin-bottom: 0.25rem;">Dr. Health AI</h2>
+            <p style="color: #64748b; font-weight: 500; font-size: 0.9rem; margin-bottom: 0.75rem;">Your Virtual Care Guide</p>
+            <div style="font-size: 0.75rem; color: #b91c1c; background: #fef2f2; padding: 8px; border-radius: 6px; border: 1px solid #fecaca; font-weight: 600;">
+                ️ Not a substitute for professional medical advice. Call 911 for emergencies.
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div style="font-weight: 600; color: #475569; margin-bottom: 0.5rem; font-size: 0.85rem; text-transform: uppercase;">Quick Actions</div>', unsafe_allow_html=True)
+        if st.button("Spot Weekly Patterns", use_container_width=True):
+            notes = load_notes()
+            context = build_assistant_context(notes, True, True)
+            get_avatar_advice("Can you spot any patterns in my logs this week?", context)
+            st.rerun()
+        if st.button("Appt Prep Highlights", use_container_width=True):
+            notes = load_notes()
+            context = build_assistant_context(notes, True, True)
+            get_avatar_advice("Summarize the most important points for my next doctor visit.", context)
+            st.rerun()
 
-        st.markdown('<div style="margin-bottom: 1rem;">', unsafe_allow_html=True)
-        recorded_audio = st.audio_input("Record your message", key="voice_chat_input")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Load context
+    with col_interaction:
         notes = load_notes()
         context = build_assistant_context(notes, True, True)
-
-        with st.container(border=True):
+        
+        # Modern Chat History Display
+        st.markdown('<div style="font-weight: 600; color: #475569; margin-bottom: 0.5rem; font-size: 0.85rem; text-transform: uppercase;">Active Consultation</div>', unsafe_allow_html=True)
+        
+        chat_box = st.container(height=450, border=True)
+        with chat_box:
+            if not st.session_state["messages"]:
+                st.info(" Hello! I am your AI assistant. How can I help you regarding your health tracking today? (Type below or send a voice message)")
+            else:
+                for msg in st.session_state["messages"]:
+                    is_user = msg["role"] == "user"
+                    bubble_class = "chat-bubble-user" if is_user else "chat-bubble-assistant"
+                    align = "right" if is_user else "left"
+                    margin = "margin-left: 20%;" if is_user else "margin-right: 20%;"
+                    
+                    st.markdown(f"""
+                    <div style="text-align: {align}; margin-bottom: 1rem;">
+                        <div class="{bubble_class}" style="display: inline-block; text-align: left; border-radius: 12px; {margin}">
+                            {markdown.markdown(msg["content"])}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Unified Input Area
+        st.markdown("<div style='margin-bottom: 0.8rem;'></div>", unsafe_allow_html=True)
+        with st.expander(" Send Voice Message", expanded=False):
+            recorded_audio = st.audio_input("Record your question", key="voice_chat_input")
             if recorded_audio:
-                if st.button("Transcribe & Ask", type="primary", use_container_width=True):
+                if st.button("Transcribe & Send ", type="primary", use_container_width=True):
                     audio_bytes = recorded_audio.read()
                     with st.spinner("Analyzing speech..."):
                         voice_text = transcribe_audio_bytes(audio_bytes)
                         if voice_text and not voice_text.startswith("[Error"):
                             get_avatar_advice(voice_text, context)
+                            st.rerun()
                         elif not voice_text:
-                            st.warning("No speech detected. Please speak clearly into the microphone.")
+                            st.warning("No speech detected.")
                         else:
-                            st.error(f"Transcription error: {voice_text}")
-            
-            # 1) Transcript Section
-            if st.session_state.get("last_transcript"):
-                st.markdown("### 📝 recognized Transcript")
-                st.info(st.session_state["last_transcript"])
-            
-            # 2) Assistant Reply Section
-            if st.session_state.get("last_ai_reply"):
-                st.markdown("### 🤖 Assistant Response")
-                st.success(st.session_state["last_ai_reply"])
-                
-            st.divider()
-            
-            # 3) Full Chat History
-            st.markdown("### 💬 Persistent Chat History")
-            if not st.session_state["messages"]:
-                st.info("Greetings. I am your AI assistant. I can help summarize your logs or prepare you for your next doctor's visit.")
-            else:
-                for msg in st.session_state["messages"]:
-                    with st.chat_message(msg["role"]):
-                        st.write(msg["content"])
+                            st.error(voice_text)
+                            
+        # Text Input fallback integrated seamlessly
+        txt_input = st.chat_input("Type your message here...")
+        if txt_input:
+            get_avatar_advice(txt_input, context)
+            st.rerun()
 
-            user_input = st.chat_input("Ask about your health trends...")
-            if user_input:
-                get_avatar_advice(user_input, context)
+        # Handle Audio Playback animations if a new message was generated
+        if "last_audio" in st.session_state and st.session_state["last_audio"]:
+            st.audio(st.session_state["last_audio"], format="audio/mp3", autoplay=True)
+            if st.session_state.get("new_audio_flag"):
+                st.session_state["avatar_talking"] = True
+                avatar_hero_placeholder.markdown(get_avatar_html(True, "EXPLAINING"), unsafe_allow_html=True)
                 
-            # Audio Playback & Animation
-            if "last_audio" in st.session_state and st.session_state["last_audio"]:
-                st.audio(st.session_state["last_audio"], format="audio/mp3", autoplay=True)
-                if st.session_state.get("new_audio_flag"):
-                    st.session_state["avatar_talking"] = True
-                    avatar_hero_placeholder.markdown(get_avatar_html(True, "EXPLAINING"), unsafe_allow_html=True)
-                    last_msg = st.session_state["messages"][-1]["content"] if st.session_state["messages"] else ""
-                    sleep_duration = max(2, len(last_msg) * 0.05)
-                    time.sleep(sleep_duration)
-                    st.session_state["avatar_talking"] = False
-                    st.session_state["new_audio_flag"] = False
-                    st.rerun()
-        
-    st.divider()
-    with st.expander("Clinical Preparation Tools"):
-        c1, c2, c3 = st.columns(3)
-        if c1.button("Spot Weekly Patterns", use_container_width=True):
-            get_avatar_advice("Spot Patterns", context)
-        if c2.button("Appt Prep Highlights", use_container_width=True):
-            get_avatar_advice("Doctor Prep", context)
-        if c3.button("Doctor Questions", use_container_width=True):
+                # Approximate talk time
+                last_msg = st.session_state["messages"][-1]["content"] if st.session_state["messages"] else ""
+                sleep_duration = max(2, len(last_msg) * 0.05)
+                time.sleep(sleep_duration)
+                
+                st.session_state["avatar_talking"] = False
+                st.session_state["new_audio_flag"] = False
+                st.rerun()
+
+        if st.button("Doctor Questions", use_container_width=True):
             get_avatar_advice("Generate Questions", context)
 
 elif current_page == "Daily Check-In":
-    st.markdown('<div class="section-header">Daily Health Check-In</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header" style="border-left-color: #16a34a;">Daily Health Check-In</div>', unsafe_allow_html=True)
 
     if st.session_state.get("show_checkin_results") and st.session_state.get("last_checkin_result"):
         res = st.session_state["last_checkin_result"]
-        st.markdown("### 📊 Today's Summary Results")
+        st.markdown('<h3 style="color: #166534; font-size: 1.2rem; margin-bottom: 1rem;"> Today\'s Summary Results</h3>', unsafe_allow_html=True)
         
         col_res1, col_res2 = st.columns([1.5, 1])
         
         with col_res1:
-            st.markdown('<div class="card" style="padding: 1.5rem;">', unsafe_allow_html=True)
-            st.markdown("#### Transcript & Summary")
+            st.markdown('<div class="card" style="padding: 1.5rem; border-top: 4px solid #3b82f6;">', unsafe_allow_html=True)
+            st.markdown('<h4 style="color: #1e40af; font-size: 1rem; margin-top:0;">1. Transcript & Summary</h4>', unsafe_allow_html=True)
             st.write(res.get("raw_text_redacted", ""))
             
             if res.get("diary"):
-                st.markdown("---")
-                st.markdown("**AI Diary Entry:**")
-                st.write(res["diary"].get("summary", "Analysis pending..."))
+                st.markdown("<hr style='margin: 1rem 0; background-color: #e2e8f0; border: none; height: 1px;'/>", unsafe_allow_html=True)
+                st.markdown('<div style="font-weight: 600; color: #475569; font-size: 0.85rem; text-transform: uppercase;">AI Generated Diary Entry</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="color: #334155; margin-top: 0.5rem; font-style: italic;">"{res["diary"].get("summary", "Analysis pending...")}"</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            st.markdown('<div class="card" style="padding: 1.5rem; border-left: 5px solid #16A34A;">', unsafe_allow_html=True)
-            st.markdown("#### 💡 Today's Professional Insight")
-            st.write(generate_insight(res.get("raw_text_redacted", "")))
+            st.markdown('<div class="card" style="padding: 1.5rem; border-top: 4px solid #16A34A; background: #f0fdf4;">', unsafe_allow_html=True)
+            st.markdown('<h4 style="color: #166534; font-size: 1rem; margin-top:0;"> Professional Insight</h4>', unsafe_allow_html=True)
+            st.markdown(f'<div style="color: #166534; font-size: 0.9rem;">{clean_html(generate_insight(res.get("raw_text_redacted", "")))}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_res2:
-            st.markdown('<div class="card" style="padding: 1.5rem; text-align: center;">', unsafe_allow_html=True)
-            st.markdown("#### Health Tags & Sentiment")
+            st.markdown('<div class="card" style="padding: 1.5rem; text-align: center; border-top: 4px solid #f59e0b;">', unsafe_allow_html=True)
+            st.markdown('<h4 style="color: #b45309; font-size: 1rem; margin-top:0;">2. Emotion Detection</h4>', unsafe_allow_html=True)
             mood_score = res.get("diary", {}).get("sentiment", 0)
             mood_l = get_mood_label(mood_score)
-            st.markdown(f'<div style="font-size: 2rem; font-weight: 800; color: #3A86FF;">{mood_l}</div>', unsafe_allow_html=True)
-            st.markdown(f'Score: {mood_score:.2f}')
+            st.markdown(f'<div style="font-size: 2.5rem; margin: 0.5rem 0;">{mood_l}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Sentiment Score: {mood_score:.2f}</div>', unsafe_allow_html=True)
             
             entities = res.get("medical_entities", {})
             if any(entities.values()):
-                st.markdown("---")
-                st.markdown("**Detected Entities:**")
+                st.markdown("<hr style='margin: 1rem 0; background-color: #e2e8f0; border: none; height: 1px;'/>", unsafe_allow_html=True)
+                st.markdown('<div style="font-weight: 600; color: #475569; font-size: 0.85rem; text-transform: uppercase;">Extracted Symptoms</div>', unsafe_allow_html=True)
                 for cat, items in entities.items():
                     if items:
-                        st.markdown(f"*{cat}:* {', '.join(items)}")
+                        st.markdown(f"<div style='font-size: 0.8rem; color: #334155; margin-top: 0.25rem;'><b>{cat}:</b> {', '.join(items)}</div>", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
             # Mini Trend Preview
             all_notes = load_notes()
             diary_notes = [n for n in all_notes if n.get("mode") == "diary"]
             if len(diary_notes) > 1:
-                st.markdown('<div class="card" style="padding: 1rem;">', unsafe_allow_html=True)
-                st.markdown("#### 7-Day Trend Preview")
+                st.markdown('<div class="card" style="padding: 1rem; border-top: 4px solid #8b5cf6;">', unsafe_allow_html=True)
+                st.markdown('<h4 style="color: #5b21b6; font-size: 0.9rem; margin-top:0;">7-Day Trend</h4>', unsafe_allow_html=True)
                 scores = [float(n.get("diary", {}).get("sentiment", 0)) for n in diary_notes[-7:]]
                 st.line_chart(scores, height=120)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
         cbtn1, cbtn2 = st.columns(2)
-        if cbtn1.button("🔙 Back to Dashboard", use_container_width=True):
+        if cbtn1.button(" Back to Dashboard", use_container_width=True):
             st.session_state["show_checkin_results"] = False
             st.rerun()
-        if cbtn2.button("📈 Open Full Insights", type="primary", use_container_width=True):
+        if cbtn2.button(" Open Full Insights", type="primary", use_container_width=True):
             st.session_state["show_checkin_results"] = False
             st.session_state["current_page"] = "Insights"
             st.rerun()
         
         st.stop() # Prevent showing the form below
 
-    st.write("Share your health updates via voice or text. Your data is analyzed and saved securely.")
+    st.markdown('<p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Share your health updates via voice or text. Your data is analyzed and saved securely.</p>', unsafe_allow_html=True)
 
 
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    input_text = st.text_area("How are you feeling?", value=st.session_state["transcribed_text"], placeholder="e.g., 'I have a slight headache and felt tired today.'", height=150)
-    st.session_state["transcribed_text"] = input_text
-    
-    checkin_mode = st.radio("Log Type:", ["Personal Health Diary", "Clinical SOAP Note"], horizontal=True)
+    with st.container(border=True):
+        st.markdown('<h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 0; margin-bottom: 1rem;">1. Input Your Data</h3>', unsafe_allow_html=True)
         
-    c1, c2, c3 = st.columns([1,1,1])
-    with c1:
-        checkin_audio = st.audio_input("Voice Log", key="checkin_audio_input")
-    with c2:
-        confirm_phi = st.checkbox("Confirm NO PHI", value=False)
-    with c3:
-        if st.button("Clear Input", use_container_width=True):
-            st.session_state["transcribed_text"] = ""
-            st.rerun()
+        input_text = st.text_area("How are you feeling?", value=st.session_state["transcribed_text"], placeholder="e.g., 'I have a slight headache and felt tired today.'", height=120)
+        st.session_state["transcribed_text"] = input_text
+        
+        st.markdown('<div style="margin: 1rem 0;"></div>', unsafe_allow_html=True)
+        
+        c1, c2, c3 = st.columns([1.5, 1, 1], gap="medium")
+        with c1:
+            st.markdown('<div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Or Use Voice (Live Recording)</div>', unsafe_allow_html=True)
+            checkin_audio = st.audio_input("Record Voice Log", key="checkin_audio_input", label_visibility="collapsed")
+        with c2:
+            st.markdown('<div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Log Type</div>', unsafe_allow_html=True)
+            checkin_mode = st.radio("Log Type:", ["Personal Health Diary", "Clinical SOAP Note"], key="checkin_log_type_radio", label_visibility="collapsed")
+        with c3:
+            st.markdown('<div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Actions</div>', unsafe_allow_html=True)
+            if st.button("️ Clear Form", use_container_width=True):
+                st.session_state["transcribed_text"] = ""
+                st.rerun()
 
     if checkin_audio:
         if st.button("Transcribe Voice Log", use_container_width=True):
@@ -2087,32 +2366,41 @@ elif current_page == "Daily Check-In":
                 else:
                     st.error(transcription)
 
-    if st.button("Submit Check-In", type="primary", use_container_width=True, disabled=not confirm_phi):
-        if input_text.strip():
-            with st.spinner("Analyzing and saving..."):
-                today_str = datetime.today().strftime("%Y-%m-%d")
-                redacted_text = redact_phi(input_text)
-                
-                note_record = {
-                    "timestamp": datetime.now().isoformat(),
-                    "date": today_str,
-                    "mode": "soap" if "SOAP" in checkin_mode else "diary",
-                    "raw_text_redacted": redacted_text,
-                    "medical_entities": extract_medical_concepts(redacted_text)
-                }
-                
-                if note_record["mode"] == "soap":
-                    note_record["soap"] = {"text": process_soap(redacted_text)}
-                else:
-                    note_record["diary"] = process_diary_logic(redacted_text)
-                
-                save_note(note_record)
-                st.session_state["transcribed_text"] = ""
-                st.session_state["last_checkin_result"] = note_record
-                st.session_state["show_checkin_results"] = True
-                st.success("✅ Check-in saved successfully!")
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    with st.container(border=True):
+        st.markdown('<h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 0; margin-bottom: 1rem;">2. Security & Verification</h3>', unsafe_allow_html=True)
+        st.info("Your data is handled according to HIPAA compliance standards. Protected Health Information (PHI) will be automatically redacted if detected.")
+        confirm_phi = st.checkbox("I confirm I am not intentionally submitting sensitive PHI (SSN, specific addresses).", value=False)
+        
+        st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
+        if st.button(" Submit Daily Check-In", type="primary", use_container_width=True, disabled=not confirm_phi):
+            if input_text.strip():
+                with st.spinner("Analyzing and securing your clinical note..."):
+                    today_str = datetime.today().strftime("%Y-%m-%d")
+                    redacted_text = redact_phi(input_text)
+                    
+                    note_record = {
+                        "timestamp": datetime.now().isoformat(),
+                        "date": today_str,
+                        "mode": "soap" if "SOAP" in checkin_mode else "diary",
+                        "raw_text_redacted": redacted_text,
+                        "medical_entities": extract_medical_concepts(redacted_text)
+                    }
+                    
+                    if note_record["mode"] == "soap":
+                        note_record["soap"] = {"text": process_soap(redacted_text)}
+                    else:
+                        note_record["diary"] = process_diary_logic(redacted_text)
+                    
+                    save_note(note_record)
+                    st.session_state["transcribed_text"] = ""
+                    st.session_state["last_checkin_result"] = note_record
+                    st.session_state["show_checkin_results"] = True
+                    st.success(" Check-in saved successfully!")
+                    st.rerun()
+            else:
+                st.error("Please enter some text or record a voice note before submitting.")
 
     # Secondary tools in expanders
     with st.expander("Advanced Tools (Copilot & Document Merge)"):
@@ -2132,74 +2420,51 @@ elif current_page == "Daily Check-In":
             uploaded_file = st.file_uploader("Upload Lab Results (PDF/TXT)", type=["pdf","txt"], key="page_upload")
             if uploaded_file and st.button("Process Document"):
                 st.info("Document analysis in progress...")
-
-elif current_page == "Insights":
-    st.markdown('<div class="section-header">Health Insights & Analysis</div>', unsafe_allow_html=True)
-    
-    all_notes = load_notes()
-    diary_notes = [n for n in all_notes if n.get("mode") == "diary"]
-    
-    if not diary_notes:
-        render_empty_state("Log your daily check-ins to unlock behavioral and health twin insights.", icon="📈", cta={"label": "Start Daily Check-In", "action": lambda: st.session_state.update({"current_page": "Daily Check-In"})})
-    else:
-        # Dashboard style analytics
-        trends = analyze_trends(diary_notes)
-        
-        i1, i2 = st.columns([1, 1])
-        with i1:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("#### Sentiment Arc (Mood Trend)")
-            try:
-                graph_notes = diary_notes[-14:]
-                dates = [str(n.get("date", "Unknown")) for n in graph_notes]
-                scores = [float(n.get("diary", {}).get("sentiment", 0.0)) for n in graph_notes]
-                fig, ax = plt.subplots(figsize=(6, 3))
-                ax.plot(dates, scores, marker='o', color='#3A86FF')
-                ax.axhline(0, color='gray', linestyle='--')
-                plt.xticks(rotation=45)
-                st.pyplot(fig)
-            except: st.write("Graph generation pending more data.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("#### Predicting Risk Intensity")
-            alerts = generate_risk_alerts(trends)
-            if alerts:
-                for a in alerts: st.warning(a)
-            else: st.success("No high-risk trends detected.")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with i2:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("#### AI Health Twin Profile")
-            if st.button("Regenerate Twin Profile"):
-                st.session_state["health_twin_summary"] = generate_health_twin_summary(all_notes)
-            st.write(st.session_state.get("health_twin_summary", "Profile pending regeneration."))
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("#### Micro-Habit Prescriptions")
-            if st.button("Generate Today's Habits"):
-                st.session_state["habits"] = generate_micro_habits(all_notes)
-            if st.session_state.get("habits"):
-                for hb in st.session_state["habits"]: st.checkbox(hb)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-elif current_page == "Reports":
-    render_reports_page()
 elif current_page == "Find Care":
     render_find_care()
-    st.markdown('</div>', unsafe_allow_html=True)
 elif current_page == "Settings":
     st.markdown('<div class="section-header">Security & Account Settings</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.write("Manage your patient portal configuration.")
-    st.session_state["privacy_mode"] = st.toggle("Global Privacy Mode (No local storage)", value=st.session_state.get("privacy_mode", False))
-    st.divider()
-    if st.button("🚨 Wipe My Local History", use_container_width=True):
-        clear_local_history()
-        st.success("All local records deleted.")
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.write("Manage your patient portal configuration.")
+        st.session_state["privacy_mode"] = st.toggle("Global Privacy Mode (No local storage)", value=st.session_state.get("privacy_mode", False))
+        st.divider()
+        if st.button(" Wipe My Local History", use_container_width=True):
+            clear_local_history()
+            st.success("All local records deleted.")
+            st.rerun()
+            
+    st.markdown('<div class="section-header" style="margin-top: 2rem;">Secure Chat History</div>', unsafe_allow_html=True)
+    all_notes = load_notes()
+    chat_sessions = [n for n in all_notes if n.get("mode") == "chat_session"]
+    chat_sessions = sorted(chat_sessions, key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    with st.container(border=True):
+        if not chat_sessions:
+            st.info("No chat history available. Start a consultation with the AI Doctor to begin.")
+        else:
+            st.write("Review your past conversations with the AI Assistant below.")
+            for session in chat_sessions:
+                safe_title = session.get("title", "Conversation")
+                date_str = session.get("date", "Unknown Date")
+                
+                with st.expander(f"️ {date_str} — {safe_title}"):
+                    messages = session.get("messages", [])
+                    if not messages:
+                        st.write("*No messages recorded.*")
+                        continue
+                        
+                    for msg in messages:
+                        is_user = msg["role"] == "user"
+                        bubble_class = "chat-bubble-user" if is_user else "chat-bubble-assistant"
+                        align = "right" if is_user else "left"
+                        margin = "margin-left: 20%;" if is_user else "margin-right: 20%;"
+                        
+                        st.markdown(f"""
+                        <div style="text-align: {align}; margin-bottom: 1rem;">
+                            <div class="{bubble_class}" style="display: inline-block; text-align: left; border-radius: 12px; {margin}">
+                                {markdown.markdown(msg["content"])}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True) # End main-container
