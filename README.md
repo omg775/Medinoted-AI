@@ -1,4 +1,4 @@
-# Health Assistant AI
+# MEDINOTED AI
 
 A professional, dual-feature web application that functions as both a Clinical Note Cleaner and an AI Health Diary Summarizer.
 
