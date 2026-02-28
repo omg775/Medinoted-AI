@@ -56,3 +56,7 @@ A professional, dual-feature web application that functions as both a Clinical N
 
 OUR deployment:
 www.medinoted.com
+
+Screenshot
+<img width="2914" height="1624" alt="image" src="https://github.com/user-attachments/assets/a8c89737-119c-4632-bde5-f11c5887f66f" />
+
