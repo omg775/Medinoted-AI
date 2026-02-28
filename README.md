@@ -3,13 +3,10 @@
 A professional, dual-feature web application that functions as both a Clinical Note Cleaner and an AI Health Diary Summarizer.
 
 ## Features
-
-### 1. Clinical Note Cleaner (SOAP)
+### AI Health Diary Summarizer
 - **Voice Recording:** Directly record your dictation from the browser interface.
 - **High-Quality Transcription:** Uses OpenAI's Whisper model for accurate speech-to-text conversion.
-- **SOAP Formatting:** Automatically categorizes your transcribed text into Subjective, Objective, Assessment, and Plan sections using GPT-4o.
-
-### 2. AI Health Diary Summarizer
+- **SOAP Formatting:** Automatically categorizes your transcribed text.
 - **Daily Entries:** Log how you're feeling and your daily activities.
 - **Smart Analysis:** Automatically calculates a sentiment score (using `vaderSentiment`) to track your mood and auto-tags entries with relevant keywords (symptoms, mood, food).
 - **Data Visualization:** View a longitudinal graph of your sentiment scores over time using `matplotlib`.
