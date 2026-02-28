@@ -3,3 +3,9 @@ primaryColor = "#1e3a8a"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f0f4f9"
 textColor = "#1a202c"
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+port = $PORT
