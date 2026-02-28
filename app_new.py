@@ -297,16 +297,49 @@ st.markdown("""
     
     [data-theme="light"] .section-header { color: var(--ms-neutral-primary); }
     
-    .kpi-tile { 
-        background: var(--secondary-background-color); 
-        padding: clamp(1.5rem, 4vw, 2.5rem); 
-        border-radius: 2px; 
-        border: 1px solid rgba(128, 128, 128, 0.15); 
+    /* Clinical Dashboard Styles */
+    .stContainer {
+        border-radius: 12px !important;
+        background-color: white !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid #e2e8f0 !important;
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
     }
-    [data-theme="light"] .kpi-tile { background: var(--ms-azure-white); border: 1px solid var(--ms-neutral-tertiary); }
 
-    .kpi-value { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; line-height: 1; color: var(--text-color); }
-    .kpi-label { font-size: clamp(0.85rem, 2vw, 1.1rem); color: var(--ms-neutral-secondary); font-weight: 700; margin-top: 1rem; text-transform: uppercase; }
+    .kpi-tile-clinical {
+        padding: 0.75rem;
+        text-align: center;
+    }
+    .kpi-value-clinical {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .kpi-label-clinical {
+        font-size: 0.7rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.25rem;
+    }
+    .kpi-micro-clinical {
+        font-size: 0.6rem;
+        color: #94a3b8;
+    }
+
+    .accent-blue { border-left: 4px solid #3b82f6 !important; }
+    .accent-green { border-left: 4px solid #10b981 !important; }
+    .accent-orange { border-left: 4px solid #f59e0b !important; }
+    .accent-purple { border-left: 4px solid #8b5cf6 !important; }
+
+    .insight-card-clinical {
+        background: #f8fafc !important;
+        border-left: 4px solid #3b82f6 !important;
+        padding: 1rem !important;
+        border-radius: 8px !important;
+    }
     
     .orb-container {
         display: flex;
@@ -1586,9 +1619,17 @@ def render_sidebar():
         st.markdown(f"**Active Streak:** 🔥 {streak} Day(s)")
 
 def render_dashboard():
-    st.markdown('<div class="section-header">Patient Portal Dashboard</div>', unsafe_allow_html=True)
+    import re
+    def clean_html(raw_html):
+        """Removes HTML tags from a string for safe text display."""
+        if not raw_html: return ""
+        cleanr = re.compile('<.*?>')
+        cleantext = re.sub(cleanr, '', str(raw_html))
+        return cleantext
+
+    st.markdown('<div class="section-header" style="margin-bottom: 1.5rem; border-left-color: #3b82f6;">Patient Portal Dashboard</div>', unsafe_allow_html=True)
     
-    # 1. Patient Status Panel
+    # 1. Patient Status Panel (Top KPI Cards)
     all_notes = load_notes()
     diary_notes = [n for n in all_notes if n.get("mode") == "diary"]
     trends = analyze_trends(diary_notes)
@@ -1596,87 +1637,112 @@ def render_dashboard():
     avg_mood = trends.get("sentiment_avg", 0)
     mood_label = get_mood_label(avg_mood)
     
-    last_log = "Never"
+    last_log_val = "None today"
+    last_log_micro = "Daily log status"
     if all_notes:
         last_dt = datetime.fromisoformat(all_notes[-1].get("timestamp", datetime.now().isoformat()))
-        last_log = last_dt.strftime("%b %d, %H:%M")
+        if last_dt.date() == datetime.today().date():
+            last_log_val = last_dt.strftime("%H:%M")
+            last_log_micro = "Updated today"
+        else:
+            last_log_val = last_dt.strftime("%b %d")
+            last_log_micro = f"Last log {last_dt.strftime('%H:%M')}"
         
     s1, s2, s3, s4 = st.columns(4)
-    with s1: st.markdown(f'<div class="kpi-tile"><div class="kpi-value">{mood_label}</div><div class="kpi-label">Today\'s Mood</div></div>', unsafe_allow_html=True)
-    with s2: st.markdown(f'<div class="kpi-tile"><div class="kpi-value" style="font-size: 1.2rem;">{last_log}</div><div class="kpi-label">Last Check-In</div></div>', unsafe_allow_html=True)
-    with s3: st.markdown(f'<div class="kpi-tile"><div class="kpi-value">{(len(all_notes)%5)*20}%</div><div class="kpi-label">Report Progress</div></div>', unsafe_allow_html=True)
-    with s4: st.markdown(f'<div class="kpi-tile"><div class="kpi-value">Ready</div><div class="kpi-label">Voice Assistant</div></div>', unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
+    with s1: 
+        with st.container(border=True):
+            st.markdown(f'<div class="kpi-tile-clinical accent-blue"><div class="kpi-value-clinical">{mood_label}</div><div class="kpi-label-clinical">Today\'s Mood</div><div class="kpi-micro-clinical">Sentiment analysis</div></div>', unsafe_allow_html=True)
+    with s2:
+        with st.container(border=True):
+            st.markdown(f'<div class="kpi-tile-clinical accent-green"><div class="kpi-value-clinical">{last_log_val}</div><div class="kpi-label-clinical">Last Check-In</div><div class="kpi-micro-clinical">{last_log_micro}</div></div>', unsafe_allow_html=True)
+    with s3: 
+        with st.container(border=True):
+            progress = (len(all_notes) % 5) * 20
+            st.markdown(f'<div class="kpi-tile-clinical accent-orange"><div class="kpi-value-clinical">{progress}%</div><div class="kpi-label-clinical">Monthly report progress</div><div class="kpi-micro-clinical">Progress to summary</div></div>', unsafe_allow_html=True)
+    with s4:
+        with st.container(border=True):
+            st.markdown(f'<div class="kpi-tile-clinical accent-purple"><div class="kpi-value-clinical">Live</div><div class="kpi-label-clinical">Voice Assistant</div><div class="kpi-micro-clinical">System ready</div></div>', unsafe_allow_html=True)
     
     # 2. Primary Action
-    if st.button("🚀 Start Daily Check-In", type="primary", use_container_width=True, help="Record your health summary for today"):
+    st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
+    if st.button("START DAILY CHECK-IN", type="primary", use_container_width=True):
         st.session_state["current_page"] = "Daily Check-In"
         st.rerun()
-        
-    st.markdown("<br/>", unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Record your clinical symptoms, mood, or a voice note.</p>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
     
     # 3. Quick Access Cards
-    st.markdown("### Quick Access")
+    st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; color: #334155;">Quick Access</h3>', unsafe_allow_html=True)
     q1, q2, q3 = st.columns(3)
-    with q1:
-        st.markdown('<div class="card" style="height: 180px; text-align: center;">', unsafe_allow_html=True)
-        st.markdown("#### AI Doctor")
-        st.markdown("<p style='font-size: 0.8rem; color: #666;'>Consult with your virtual physician</p>", unsafe_allow_html=True)
-        if st.button("Launch Assistant", key="qa_dr"): st.session_state["current_page"] = "AI Doctor"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with q2:
-        st.markdown('<div class="card" style="height: 180px; text-align: center;">', unsafe_allow_html=True)
-        st.markdown("#### Health Records")
-        st.markdown("<p style='font-size: 0.8rem; color: #666;'>View your medical timeline</p>", unsafe_allow_html=True)
-        if st.button("View Records", key="qa_rec"): st.session_state["current_page"] = "Reports"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with q3:
-        st.markdown('<div class="card" style="height: 180px; text-align: center;">', unsafe_allow_html=True)
-        st.markdown("#### Find Care")
-        st.markdown("<p style='font-size: 0.8rem; color: #666;'>Locate clinics & pharmacies</p>", unsafe_allow_html=True)
-        if st.button("Search Nearby", key="qa_care"): st.session_state["current_page"] = "Find Care"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    
+    items = [
+        (q1, "🤖", "AI Doctor", "Consult with your virtual assistant.", "AI Doctor", "qa_dr_2"),
+        (q2, "📋", "Health Records", "View your medical timeline.", "Reports", "qa_rec_2"),
+        (q3, "🗺️", "Find Care", "Locate nearby medical facilities.", "Find Care", "qa_care_2")
+    ]
+    
+    for col, icon, title, desc, page, key in items:
+        with col:
+            with st.container(border=True):
+                st.markdown(f"""
+                <div style="text-align: center; margin-bottom: 0.5rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.25rem;">{icon}</div>
+                    <div style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">{title}</div>
+                    <p style="font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 1rem 0; min-height: 2.5rem;">{desc}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"Open {title}", key=key, use_container_width=True):
+                    st.session_state["current_page"] = page
+                    st.rerun()
         
-    # Today Insight card
+    # 4. Today Insight (Conditional)
     if diary_notes:
         last_entry = diary_notes[-1].get("raw_text_redacted", "")
         if last_entry:
-            st.markdown('<div class="card" style="border-left: 5px solid #3A86FF;">', unsafe_allow_html=True)
-            st.markdown("### 💡 Today's Insight")
-            st.write(generate_insight(last_entry))
-            st.markdown('</div>', unsafe_allow_html=True)
-    elif not all_notes:
-        render_empty_state("No health insights available yet. Please complete your first check-in.", cta={"label": "Start Check-In Now", "action": lambda: st.session_state.update({"current_page": "Daily Check-In"})})
+            insight_text = generate_insight(last_entry)
+            st.markdown(f"""
+            <div class="insight-card-clinical">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color: #1e3a8a;">💡 Today's Insight</h3>
+                <div style="font-size: 0.9rem; color: #1e40af; line-height: 1.4;">{clean_html(insight_text)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Log your status today to generate a clinical health insight.")
 
-    # 4. Recent Activity Panel
+    # 5. Recent Activity & Symptoms
     if all_notes:
-        st.markdown("### Recent Activity")
-        with st.container():
-            col_act, col_symptom = st.columns([2, 1])
-            
-            with col_act:
-                st.markdown('<div class="card" style="padding: 1.5rem;">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #334155;">Recent Activity</h3>', unsafe_allow_html=True)
+        col_act, col_symptom = st.columns([1.8, 1.2])
+        
+        with col_act:
+            with st.container(border=True):
                 for n in all_notes[-3:][::-1]:
                     dt = n.get("date", "Unknown")
-                    snippet = n.get("raw_text_redacted", "")[:80] + "..."
+                    raw_text = n.get("raw_text_redacted", "")
+                    clean_text = clean_html(raw_text)
+                    snippet = clean_text[:80] + "..." if len(clean_text) > 80 else clean_text
                     mode_icon = "🏥" if n.get("mode") == "soap" else "📓"
-                    st.markdown(f"**{dt}** {mode_icon} {snippet}")
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col_symptom:
-                top_symptoms = trends.get("top_symptoms", [])
+                    st.markdown(f"""
+                    <div style="margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #3b82f6; font-size: 0.8rem;">{dt} {mode_icon}</span><br/>
+                        <span style="font-size: 0.8rem; color: #475569; line-height: 1.4;">{snippet}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        with col_symptom:
+            top_symptoms = trends.get("top_symptoms", [])
+            with st.container(border=True):
                 if top_symptoms:
                     symptom_name, count = top_symptoms[0]
-                    st.markdown('<div class="card" style="padding: 1.5rem; text-align: center; border-top: 4px solid #F25022;">', unsafe_allow_html=True)
-                    st.markdown("#### Primary Symptom")
-                    st.markdown(f'<div style="font-size: 1.5rem; font-weight: 800; color: #F25022;">{symptom_name.title()}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div style="font-size: 0.8rem; color: #666;">Reported {count} times recently</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 0.5rem 0;">
+                        <h4 style="margin: 0; color: #64748b; font-size: 0.85rem;">Primary Symptom</h4>
+                        <div style="font-size: 1.75rem; font-weight: 700; color: #d97706; margin: 0.5rem 0;">{symptom_name.title()}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">Reported <b>{count} times</b> recently</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.markdown('<div class="card" style="padding: 1.5rem; text-align: center; opacity: 0.6;">', unsafe_allow_html=True)
-                    st.markdown("No symptoms detected yet.")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="text-align: center; color: #94a3b8; padding: 1rem 0; font-size: 0.85rem;">No symptoms tracked.</div>', unsafe_allow_html=True)
 
 def render_find_care():
     st.markdown('<div class="section-header">Find Care Nearby</div>', unsafe_allow_html=True)
